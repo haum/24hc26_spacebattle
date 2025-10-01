@@ -6,12 +6,27 @@ async def no_send(_):
 
 
 class Vessel:
-    def __init__(self, game):
+    def __init__(self, game, universe, stats):
         self.g = weakref.proxy(game)
+        self.u = weakref.proxy(universe)
+
+        self.hp = stats[0]
+        self.attack = stats[1]
+        self.speed = stats[2]
+        self.detection = stats[3]
+
         self.reset_send()
+
+    async def destoy(self):
+        await self.send('Vessel destoyed')
+        self.reset_send()
+        self.u.remove_vessel(self)
 
     def reset_send(self):
         self.send = no_send
+
+    def name(self):
+        return next(k for k, v in self.g.vessels.items() if v == self)
 
     async def onMsg_ping(self, data):
         return {'type': 'pong', 'n': data.get('n', None)}
