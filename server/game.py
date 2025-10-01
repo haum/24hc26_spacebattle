@@ -10,3 +10,6 @@ class Game:
             'ppdOd': Vessel(self),
             'NnsgT': Vessel(self),
         }
+
+    async def onUnknownMsg(self, data):
+        return 'Unknown message'

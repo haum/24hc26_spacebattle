@@ -7,7 +7,7 @@ class Vessel:
         self.send = lambda _: None
 
     async def onMsg_ping(self, data):
-        await self.send({'type': 'pong', 'n': data.get('n', None)})
+        return {'type': 'pong', 'n': data.get('n', None)}
 
     async def onUnknownMsg(self, data):
         return 'Unknown message'

@@ -1,5 +1,6 @@
 import aiohttp
 import aiohttp.web as web
+import functools
 import json
 import weakref
 
@@ -8,6 +9,25 @@ from game import Game
 
 async def index(rq):
     return web.Response(text='24HC26 game server')
+
+
+async def send_to_obj(ws, obj, data):
+    h = getattr(obj, f'onMsg_{data['type']}', None)
+    if h:
+        res = await h(data)
+    else:
+        res = await obj.onUnknownMsg(data)
+    await send_msg(ws, res)
+
+
+async def send_msg(ws, data):
+    if isinstance(data, str):
+        await ws.close(message=data)
+    elif isinstance(data, dict):
+        await ws.send_json(data)
+    elif data:
+        for o in data:
+            await ws.send_json(o)
 
 
 async def mainws(rq):
@@ -31,23 +51,16 @@ async def mainws(rq):
                 except json.decoder.JSONDecodeError:
                     await ws.close(message='Invalid JSON')
                     continue
-                if vessel:
-                    h = getattr(vessel, f'onMsg_{data['type']}', None)
-                    if h:
-                        res = await h(data)
-                    else:
-                        res = await vessel.onUnknownMsg(data)
-                    if res is not None:
-                        await ws.close(message=str(res))
-                        continue
-                else:
+
+                if data['type'] == 'connect':
                     vessels = rq.app['game'].vessels
-                    if (data['type'] != 'connect'
-                       or data.get('id', None) not in vessels):
+                    if data.get('id', None) in vessels:
+                        vessel = weakref.proxy(vessels.get(data['id']))
+                        vessel.send = functools.partial(send_msg, ws)
+                    else:
                         await ws.close(message='Invalid connect')
-                        continue
-                    vessel = weakref.proxy(vessels.get(data['id']))
-                    vessel.send = ws.send_json
+                else:
+                    await send_to_obj(ws, vessel or rq.app['game'], data)
 
             elif msg.type == aiohttp.WSMsgType.BINARY:
                 await ws.close(code=aiohttp.WSCloseCode.UNSUPPORTED_DATA)
