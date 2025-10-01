@@ -25,6 +25,9 @@ async def mainws(rq):
                     if 'type' not in data:
                         await ws.close(message='Unknown type')
                         continue
+                    if not isinstance(data['type'], str):
+                        await ws.close(message='Invalid type')
+                        continue
                 except json.decoder.JSONDecodeError:
                     await ws.close(message='Invalid JSON')
                     continue
