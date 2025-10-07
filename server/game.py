@@ -41,10 +41,10 @@ class Game:
     def remove_vessel(self, vessel):
         self.vessels.pop(vessel.name())
 
-    async def destoy_vessels_of_team(self, team):
+    async def destroy_vessels_of_team(self, team):
         keys = list(k for k in self.vessels.keys() if k.startswith(team))
         for k in keys:
-            await self.vessels.get(k).destoy()
+            await self.vessels.get(k).destroy()
 
     def add_in_lobby(self, team, vessels_stats):
         ret = []
@@ -64,7 +64,7 @@ class Game:
         msg = {'type': 'new_vessels'}
         if error := validate_start_msg(data):
             return error
-        await self.destoy_vessels_of_team(data['team'])
+        await self.destroy_vessels_of_team(data['team'])
         msg['vessels'] = self.add_in_lobby(data['team'], data['vessels'])
         return msg
 

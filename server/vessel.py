@@ -17,8 +17,8 @@ class Vessel:
 
         self.reset_send()
 
-    async def destoy(self):
-        await self.send('Vessel destoyed')
+    async def destroy(self):
+        await self.send('Vessel destroyed')
         self.reset_send()
         self.u.remove_vessel(self)
 
