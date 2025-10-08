@@ -28,6 +28,15 @@ class Vessel:
     def name(self):
         return next(k for k, v in self.g.vessels.items() if v == self)
 
+    async def onMsg_connect(self, data):
+        return {
+            'type': 'stats',
+            'hp': self.hp,
+            'attack': self.attack,
+            'speed': self.speed,
+            'detection': self.detection,
+        }
+
     async def onMsg_ping(self, data):
         return {'type': 'pong', 'n': data.get('n', None)}
 
