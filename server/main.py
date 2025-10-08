@@ -58,6 +58,7 @@ async def mainws(rq):
                         vessel = weakref.proxy(vessels.get(data['id']))
                         await vessel.send('Disconnected by another pilot')
                         vessel.send = functools.partial(send_msg, ws)
+                        await send_to_obj(ws, vessel, data)
                     else:
                         await ws.close(message='Invalid connect')
                 else:
