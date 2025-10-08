@@ -56,6 +56,7 @@ async def mainws(rq):
                     vessels = rq.app['game'].vessels
                     if data.get('id', None) in vessels:
                         vessel = weakref.proxy(vessels.get(data['id']))
+                        await vessel.send('Disconnected by another pilot')
                         vessel.send = functools.partial(send_msg, ws)
                     else:
                         await ws.close(message='Invalid connect')
