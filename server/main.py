@@ -4,6 +4,7 @@ import functools
 import json
 import weakref
 
+from msgs import validate_msg
 from game import Game
 
 
@@ -42,14 +43,16 @@ async def mainws(rq):
             if msg.type == aiohttp.WSMsgType.TEXT:
                 try:
                     data = msg.json()
-                    if 'type' not in data:
-                        await ws.close(message='Unknown type')
-                        continue
-                    if not isinstance(data['type'], str):
-                        await ws.close(message='Invalid type')
-                        continue
                 except json.decoder.JSONDecodeError:
                     await ws.close(message='Invalid JSON')
+                    continue
+
+                inval = validate_msg(data)
+                if inval:
+                    await send_msg(ws, {
+                        'type': 'invalid_msg', 'errors': inval
+                    })
+                    await ws.close(message='Invalid message')
                     continue
 
                 if data['type'] == 'connect':
