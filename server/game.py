@@ -35,5 +35,8 @@ class Game:
         msg['vessels'] = self.add_in_lobby(data['team'], data['vessels'])
         return msg
 
+    async def onMsg_ping(self, data):
+        return {'type': 'pong', 'n': data.get('n', None)}
+
     async def onUnknownMsg(self, data):
         return 'Unknown message'
