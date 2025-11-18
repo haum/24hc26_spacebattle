@@ -6,27 +6,31 @@ async def no_send(_):
 
 
 class Vessel:
-    def __init__(self, game, universe, stats):
-        self.g = weakref.proxy(game)
+    def __init__(self, universe, hname, stats):
         self.u = weakref.proxy(universe)
 
+        self.hname = hname
         self.hp = stats[0]
         self.attack = stats[1]
         self.speed = stats[2]
         self.detection = stats[3]
 
-        self.reset_send()
+        self.set_sender(None)
+        self.u.add(self, ['vessel'])
 
     async def destroy(self):
         await self.send('Vessel destroyed')
-        self.reset_send()
-        self.u.remove_vessel(self)
+        self.set_sender(None)
+        self.u.remove(self)
 
-    def reset_send(self):
-        self.send = no_send
+    def set_sender(self, send):
+        self.send = send or no_send
 
-    def name(self):
-        return next(k for k, v in self.g.vessels.items() if v == self)
+    def name(self, secret=False):
+        if secret:
+            return ':'.join(map(str, self.hname))
+        else:
+            return ':'.join(map(str, self.hname[:2]))
 
     async def onMsg_connect(self, data):
         return {

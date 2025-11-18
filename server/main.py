@@ -76,7 +76,7 @@ async def mainws(rq):
     finally:
         rq.app['websockets'].discard(ws)
         if vessel:
-            vessel.reset_send()
+            vessel.set_sender(None)
 
     return ws
 

@@ -1,14 +1,16 @@
+import weakref
+import random
+import string
+
 from universe import Universe
 from vessel import Vessel
 
 
 class Game:
     def __init__(self):
+        self.lobby = Universe()
         self.universes = set()
-        self.vessels = {}
-
-    def remove_vessel(self, vessel):
-        self.vessels.pop(vessel.name())
+        self.vessels = weakref.WeakValueDictionary()
 
     async def destroy_vessels_of_team(self, team):
         keys = list(k for k in self.vessels.keys() if k.startswith(team))
@@ -17,16 +19,15 @@ class Game:
 
     def add_in_lobby(self, team, vessels_stats):
         ret = []
-        u = next(filter(lambda u: u.lobby, self.universes), None)
-        if not u:
-            u = Universe(self)
-            self.universes.add(u)
         for i, stats in enumerate(vessels_stats):
-            v = Vessel(self, u, stats)
-            name = f'{team}-{i+1}'
-            self.vessels[name] = v
-            ret.append(name)
-            u.objects.add(v)
+            v = Vessel(
+                self.lobby,
+                [team, i+1, ''.join(random.choices(string.ascii_letters, k=5))],
+                stats
+            )
+            secret_name = v.name(True)
+            self.vessels[secret_name] = v
+            ret.append(secret_name)
         return ret
 
     async def onMsg_start(self, data):
