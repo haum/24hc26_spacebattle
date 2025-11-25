@@ -3,10 +3,11 @@ import weakref
 
 
 class Universe:
-    def __init__(self):
+    def __init__(self, size):
         self.objects = set()
         self.groups = collections.defaultdict(set)
         self.refs = collections.defaultdict(weakref.WeakSet)
+        self.size = [10] * size
 
     def add(self, o, groups):
         for g in groups:

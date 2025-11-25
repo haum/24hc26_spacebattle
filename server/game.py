@@ -8,7 +8,7 @@ from vessel import Vessel
 
 class Game:
     def __init__(self):
-        self.lobby = Universe()
+        self.lobby = Universe(2)
         self.universes = set()
         self.vessels = weakref.WeakValueDictionary()
 

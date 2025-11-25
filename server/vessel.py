@@ -1,4 +1,7 @@
 import weakref
+import random
+
+from position import Position
 
 
 async def no_send(_):
@@ -16,6 +19,10 @@ class Vessel:
         self.detection = stats[3]
 
         self.set_sender(None)
+        self.position = Position(
+            self.u,
+            [random.randint(0, b) for b in self.u.size]
+        )
         self.u.add(self, ['vessel'])
 
     async def destroy(self):
