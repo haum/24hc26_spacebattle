@@ -53,3 +53,10 @@ class Vessel:
 
     async def onUnknownMsg(self, data):
         return 'Unknown message'
+
+    def __str__(self):
+        return ''.join([
+            f'Vessel(p={self.position}, hp={self.hp}, attack={self.attack}, ',
+            f'speed={self.speed}, detection={self.detection}, ',
+            f'hname={self.hname})',
+        ])

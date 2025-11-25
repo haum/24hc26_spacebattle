@@ -41,3 +41,6 @@ class Game:
 
     async def onUnknownMsg(self, data):
         return 'Unknown message'
+
+    def __str__(self):
+        return str(self.lobby)

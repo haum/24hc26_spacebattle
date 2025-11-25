@@ -31,3 +31,12 @@ class Universe:
         if group in self.refs:
             for o in self.refs[group]:
                 yield o
+
+    def __str__(self):
+        s = f'Universe(\n\tsize={self.size}'
+        for r in self.refs.keys():
+            s += f'\n\t{r}=['
+            for o in self.refs[r]:
+                s += '\n\t\t' + str(o)
+            s += '\n\t]'
+        return s+'\n)'

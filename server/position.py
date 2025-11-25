@@ -18,3 +18,6 @@ class Position:
             return list(map(round, self.pos))
         else:
             return self.pos
+
+    def __str__(self):
+        return f'Position({str(self.pos)})'
