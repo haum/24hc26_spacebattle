@@ -58,8 +58,12 @@ async def mainws(rq):
                 if data['type'] == 'connect':
                     vessels = rq.app['game'].vessels
                     if data.get('id', None) in vessels:
+                        vessel0 = vessel
                         vessel = weakref.proxy(vessels.get(data['id']))
-                        await vessel.send('Disconnected by another pilot')
+                        if vessel0 != vessel:
+                            if vessel0:
+                                vessel0.set_sender(None)
+                            await vessel.send('Disconnected by another pilot')
                         vessel.send = functools.partial(send_msg, ws)
                         await send_to_obj(ws, vessel, data)
                     else:
