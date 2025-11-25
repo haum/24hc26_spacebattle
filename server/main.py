@@ -1,8 +1,10 @@
+import asyncio
 import aiohttp
 import aiohttp.web as web
 import functools
 import json
 import weakref
+import sys
 
 from msgs import validate_msg
 from game import Game
@@ -85,6 +87,19 @@ async def mainws(rq):
     return ws
 
 
+async def console():
+    loop = asyncio.get_event_loop()
+    reader = asyncio.StreamReader()
+    protocol = asyncio.StreamReaderProtocol(reader)
+    await loop.connect_read_pipe(lambda: protocol, sys.stdin)
+    while await reader.readline():
+        print(app['game'])
+
+
+async def on_startup(app):
+    asyncio.create_task(console())
+
+
 async def on_shutdown(app):
     for ws in set(app['websockets']):
         await ws.close(
@@ -95,6 +110,8 @@ async def on_shutdown(app):
 app = web.Application()
 
 app['game'] = Game()
+
+app.on_startup.append(on_startup)
 
 app['websockets'] = weakref.WeakSet()
 app.on_shutdown.append(on_shutdown)
