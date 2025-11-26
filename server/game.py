@@ -6,6 +6,10 @@ from universe import Universe
 from vessel import Vessel
 
 
+def randomstr(k):
+    return ''.join(random.choices(string.ascii_letters, k=k))
+
+
 class Game:
     def __init__(self):
         self.lobby = Universe(2)
@@ -22,7 +26,7 @@ class Game:
         for i, stats in enumerate(vessels_stats):
             v = Vessel(
                 self.lobby,
-                [team, i+1, ''.join(random.choices(string.ascii_letters, k=5))],
+                [team, i+1, randomstr(5)],
                 stats
             )
             secret_name = v.name(True)
