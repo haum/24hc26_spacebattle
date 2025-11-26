@@ -60,6 +60,25 @@ MSG_PING = {
     "additionalProperties": False
 }
 
+MSG_CONFIG_UNIVERSE = {
+    "properties": {
+        "type": {
+            "const": "config_universe"
+        },
+        "size": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 4,
+            "items": {
+                "type": "integer",
+                "minimum": 0,
+            }
+        }
+    },
+    "required": ["type", "size"],
+    "additionalProperties": False
+}
+
 validators = dict(map(
     lambda kv: (
         kv[0],
@@ -69,6 +88,7 @@ validators = dict(map(
         ('start', MSG_START),
         ('connect', MSG_CONNECT),
         ('ping', MSG_PING),
+        ('config_universe', MSG_CONFIG_UNIVERSE),
     )
 ))
 

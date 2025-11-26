@@ -21,6 +21,11 @@ class Game:
         for k in keys:
             await self.vessels.get(k).destroy()
 
+    def new_universe(self, sz):
+        if self.lobby and self.lobby.len('vessel') > 0:
+            self.universes.add(self.lobby)
+        self.lobby = Universe(sz)
+
     def add_in_lobby(self, team, vessels_stats):
         ret = []
         for i, stats in enumerate(vessels_stats):
@@ -39,6 +44,9 @@ class Game:
         await self.destroy_vessels_of_team(data['team'])
         msg['vessels'] = self.add_in_lobby(data['team'], data['vessels'])
         return msg
+
+    async def onMsg_config_universe(self, data):
+        self.new_universe(data['size'])
 
     async def onMsg_ping(self, data):
         return {'type': 'pong', 'n': data.get('n', None)}
