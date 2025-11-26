@@ -97,7 +97,7 @@ async def console():
 
 
 async def on_startup(app):
-    asyncio.create_task(console())
+    app['console'] = asyncio.create_task(console())
 
 
 async def on_shutdown(app):
