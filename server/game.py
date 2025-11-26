@@ -1,3 +1,4 @@
+import functools
 import weakref
 import random
 import string
@@ -10,7 +11,22 @@ def randomstr(k):
     return ''.join(random.choices(string.ascii_letters, k=k))
 
 
+def admin_only(f):
+    @functools.wraps(f)
+    async def wrapper(game, data):
+        if game.ADMIN_KEY and data.get('key', None) != Game.ADMIN_KEY:
+            return 'Invalid admin key'
+        return await f(game, data)
+    return wrapper
+
+
 class Game:
+    try:
+        with open("admin_key.txt", "r") as f:
+            ADMIN_KEY = f.read().strip()
+    except FileNotFoundError:
+        ADMIN_KEY = None
+
     def __init__(self):
         self.lobby = Universe(2)
         self.universes = set()
@@ -45,6 +61,7 @@ class Game:
         msg['vessels'] = self.add_in_lobby(data['team'], data['vessels'])
         return msg
 
+    @admin_only
     async def onMsg_config_universe(self, data):
         self.new_universe(data['size'])
 

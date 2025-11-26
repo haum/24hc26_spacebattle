@@ -65,6 +65,9 @@ MSG_CONFIG_UNIVERSE = {
         "type": {
             "const": "config_universe"
         },
+        "key": {
+            "type": "string",
+        },
         "size": {
             "type": "array",
             "minItems": 2,
