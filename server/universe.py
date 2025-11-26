@@ -32,6 +32,9 @@ class Universe:
             for o in self.refs[group]:
                 yield o
 
+    def len(self, group):
+        return len(self.refs[group]) if group in self.refs else 0
+
     def __str__(self):
         s = f'Universe(\n\tsize={self.size}'
         for r in self.refs.keys():
