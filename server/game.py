@@ -1,3 +1,4 @@
+import asyncio
 import functools
 import weakref
 import random
@@ -31,6 +32,7 @@ class Game:
         self.lobby = Universe(2)
         self.universes = set()
         self.vessels = weakref.WeakValueDictionary()
+        self.start_tasks = set()
 
     async def destroy_vessels_of_team(self, team):
         keys = list(k for k in self.vessels.keys() if k.startswith(team))
@@ -55,10 +57,26 @@ class Game:
             ret.append(secret_name)
         return ret
 
+    def teams_in_lobby(self):
+        return set(v.hname[0] for v in self.lobby.iter('vessel'))
+
+    def start_lobby(self, lobby):
+        async def _start():
+            for v in lobby.iter('vessel'):
+                await v.start()
+            self.start_tasks = {t for t in self.start_tasks if not t.done()}
+
+        if lobby is self.lobby and len(self.teams_in_lobby()) > 1:
+            self.new_universe(self.lobby.size)
+            self.start_tasks.add(asyncio.create_task(_start()))
+
     async def onMsg_start(self, data):
         msg = {'type': 'new_vessels'}
         await self.destroy_vessels_of_team(data['team'])
         msg['vessels'] = self.add_in_lobby(data['team'], data['vessels'])
+        if len(self.teams_in_lobby()) > 1:
+            loop = asyncio.get_event_loop()
+            loop.call_later(5, self.start_lobby, self.lobby)
         return msg
 
     @admin_only
