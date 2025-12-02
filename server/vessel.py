@@ -12,6 +12,7 @@ class Vessel:
     def __init__(self, universe, hname, stats):
         self.u = weakref.proxy(universe)
 
+        self.frozen = True
         self.hname = hname
         self.hp = stats[0]
         self.attack = stats[1]
@@ -39,14 +40,26 @@ class Vessel:
         else:
             return ':'.join(map(str, self.hname[:2]))
 
+    async def start(self):
+        self.frozen = False
+        await self.send({
+            'type': 'start_battle',
+        })
+
     async def onMsg_connect(self, data):
-        return {
+        msgs = []
+        msgs.append({
             'type': 'stats',
             'hp': self.hp,
             'attack': self.attack,
             'speed': self.speed,
             'detection': self.detection,
-        }
+        })
+        if not self.frozen:
+            msgs.append({
+                'type': 'start_battle',
+            })
+        return msgs
 
     async def onMsg_ping(self, data):
         return {'type': 'pong', 'n': data.get('n', None)}
