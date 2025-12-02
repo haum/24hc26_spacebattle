@@ -1,7 +1,17 @@
+import functools
 import weakref
 import random
 
 from position import Position
+
+
+def playing_only(f):
+    @functools.wraps(f)
+    async def wrapper(vessel, data):
+        if vessel.frozen:
+            return 'Battle not started'
+        return await f(vessel, data)
+    return wrapper
 
 
 async def no_send(_):
