@@ -90,4 +90,7 @@ class Game:
         return 'Unknown message'
 
     def __str__(self):
-        return str(self.lobby)
+        s = str(self.lobby)
+        for u in self.universes:
+            s += '\n'+str(u)
+        return s

@@ -93,6 +93,7 @@ async def console():
     protocol = asyncio.StreamReaderProtocol(reader)
     await loop.connect_read_pipe(lambda: protocol, sys.stdin)
     while await reader.readline():
+        print('-----')
         print(app['game'])
 
 
