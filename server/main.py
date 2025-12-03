@@ -3,6 +3,7 @@ import aiohttp
 import aiohttp.web as web
 import functools
 import json
+import os
 import weakref
 import sys
 
@@ -12,6 +13,32 @@ from game import Game
 
 async def index(rq):
     return web.Response(text='24HC26 game server')
+
+
+def redirect301(url):
+    async def impl(rq):
+        raise web.HTTPMovedPermanently(url)
+    return impl
+
+
+def static_file(path):
+    async def impl(rq):
+        subpath = rq.match_info.get('path', None)
+        f = f'{path}/{subpath}' if subpath else path
+        if not os.path.exists(f):
+            raise web.HTTPNotFound()
+        if os.path.isdir(f):
+            files = os.listdir(f)
+            files.sort()
+            response = web.Response(
+                body=json.dumps(files, indent='\t', sort_keys=True),
+                content_type='application/json'
+            )
+        else:
+            response = web.FileResponse(f)
+            response.headers['Cache-Control'] = 'max-age=30, must-revalidate'
+        return response
+    return impl
 
 
 async def send_to_obj(ws, obj, data):
@@ -121,5 +148,13 @@ app.add_routes([
     web.get('/', index),
     web.get('/ws', mainws),
 ])
+
+for d in []:
+    if os.path.isdir(d):
+        app.router.add_route('GET', f'/{d}', redirect301(d+'/'))
+        app.router.add_route('GET', f'/{d}/', static_file(d+'/index.html'))
+        app.router.add_route('GET', f'/{d}/' + '{path:.*}', static_file(d))
+    else:
+        app.router.add_route('GET', f'/{d}', static_file(d))
 
 web.run_app(app)
