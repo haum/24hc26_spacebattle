@@ -32,6 +32,10 @@ class Universe:
             for o in self.refs[group]:
                 yield o
 
+    def clean(self):
+        for o in list(self.objects):
+            self.remove(o)
+
     def len(self, group):
         return len(self.refs[group]) if group in self.refs else 0
 

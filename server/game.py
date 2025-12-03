@@ -3,6 +3,7 @@ import functools
 import weakref
 import random
 import string
+import time
 
 from universe import Universe
 from vessel import Vessel
@@ -21,6 +22,15 @@ def admin_only(f):
     return wrapper
 
 
+def teams_in_universe(u):
+    return set(v.hname[0] for v in u.iter('vessel'))
+
+
+def start_lobby_helper(game, lobby):
+    if lobby is game.lobby and len(teams_in_universe(lobby)) > 1:
+        game.new_universe(game.lobby.size)
+
+
 class Game:
     try:
         with open("admin_key.txt", "r") as f:
@@ -32,7 +42,7 @@ class Game:
         self.lobby = Universe(2)
         self.universes = set()
         self.vessels = weakref.WeakValueDictionary()
-        self.start_tasks = set()
+        self.tasks = set()
 
     async def destroy_vessels_of_team(self, team):
         keys = list(k for k in self.vessels.keys() if k.startswith(team))
@@ -42,6 +52,9 @@ class Game:
     def new_universe(self, sz):
         if self.lobby and self.lobby.len('vessel') > 0:
             self.universes.add(self.lobby)
+            self.tasks.add(asyncio.create_task(
+                self.universe_update_task(self.lobby)
+            ))
         self.lobby = Universe(sz)
 
     def add_in_lobby(self, team, vessels_stats):
@@ -57,26 +70,31 @@ class Game:
             ret.append(secret_name)
         return ret
 
-    def teams_in_lobby(self):
-        return set(v.hname[0] for v in self.lobby.iter('vessel'))
-
-    def start_lobby(self, lobby):
-        async def _start():
-            for v in lobby.iter('vessel'):
-                await v.start()
-            self.start_tasks = {t for t in self.start_tasks if not t.done()}
-
-        if lobby is self.lobby and len(self.teams_in_lobby()) > 1:
-            self.new_universe(self.lobby.size)
-            self.start_tasks.add(asyncio.create_task(_start()))
+    async def universe_update_task(self, u):
+        for v in u.iter('vessel'):
+            await v.start()
+        t0 = time.time()
+        lt = t0
+        while len(teams_in_universe(u)) > 1:
+            t = time.time()
+            for o in u.iter('update'):
+                o.onUpdate(t-lt, t-t0)
+            lt = t
+            await asyncio.sleep(0.1)
+        for v in u.iter('vessel'):
+            await v.send({'type': 'won'})
+            await v.send('End of game')
+        u.clean()
+        self.universes.remove(u)
+        self.tasks = {t for t in self.tasks if not t.done()}
 
     async def onMsg_start(self, data):
         msg = {'type': 'new_vessels'}
         await self.destroy_vessels_of_team(data['team'])
         msg['vessels'] = self.add_in_lobby(data['team'], data['vessels'])
-        if len(self.teams_in_lobby()) > 1:
+        if len(teams_in_universe(self.lobby)) > 1:
             loop = asyncio.get_event_loop()
-            loop.call_later(5, self.start_lobby, self.lobby)
+            loop.call_later(5, start_lobby_helper, self, self.lobby)
         return msg
 
     @admin_only
