@@ -38,7 +38,7 @@ async def mainws(rq):
     await ws.prepare(rq)
 
     rq.app['websockets'].add(ws)
-    vessel = None
+    vessel = lambda: None
     try:
         await ws.send_json({'type': 'hello'})
         async for msg in ws:
@@ -61,17 +61,17 @@ async def mainws(rq):
                     vessels = rq.app['game'].vessels
                     if data.get('id', None) in vessels:
                         vessel0 = vessel
-                        vessel = weakref.proxy(vessels.get(data['id']))
+                        vessel = weakref.ref(vessels.get(data['id']))
                         if vessel0 != vessel:
-                            if vessel0:
-                                vessel0.set_sender(None)
-                            await vessel.send('Disconnected by another pilot')
-                        vessel.send = functools.partial(send_msg, ws)
-                        await send_to_obj(ws, vessel, data)
+                            if vessel0() is not None:
+                                vessel0().set_sender(None)
+                            await vessel().send('Disconnected by another pilot')
+                        vessel().send = functools.partial(send_msg, ws)
+                        await send_to_obj(ws, vessel(), data)
                     else:
                         await ws.close(message='Invalid connect')
                 else:
-                    await send_to_obj(ws, vessel or rq.app['game'], data)
+                    await send_to_obj(ws, vessel() or rq.app['game'], data)
 
             elif msg.type == aiohttp.WSMsgType.BINARY:
                 await ws.close(code=aiohttp.WSCloseCode.UNSUPPORTED_DATA)
@@ -81,8 +81,8 @@ async def mainws(rq):
                 print(f'ws connection closed with exception: {ws.exception()}')
     finally:
         rq.app['websockets'].discard(ws)
-        if vessel:
-            vessel.set_sender(None)
+        if vessel():
+            vessel().set_sender(None)
 
     return ws
 
