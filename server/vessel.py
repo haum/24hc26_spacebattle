@@ -29,7 +29,7 @@ class Vessel:
         self.speed = stats[2]
         self.detection = stats[3]
 
-        self.set_sender(None)
+        self.send = no_send
         self.position = Position(
             self.u,
             [random.randint(0, b) for b in self.u.size]
@@ -38,10 +38,11 @@ class Vessel:
 
     async def destroy(self):
         await self.send('Vessel destroyed')
-        self.set_sender(None)
+        await self.set_sender(None)
         self.u.remove(self)
 
-    def set_sender(self, send):
+    async def set_sender(self, send):
+        await self.send('Disconnected by another pilot')
         self.send = send or no_send
 
     def name(self, secret=False):
@@ -57,6 +58,8 @@ class Vessel:
         })
 
     async def onMsg_connect(self, data):
+        if data['id'] != self.name(True):
+            return 'Connected to another vessel'
         msgs = []
         msgs.append({
             'type': 'stats',

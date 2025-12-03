@@ -82,8 +82,10 @@ class Game:
             lt = t
             await asyncio.sleep(0.1)
         for v in u.iter('vessel'):
-            await v.send({'type': 'won'})
-            await v.send('End of game')
+            await v.send([
+                {'type': 'won'},
+                'End of game'
+            ])
         u.clean()
         self.universes.remove(u)
         self.tasks = {t for t in self.tasks if not t.done()}
@@ -96,6 +98,12 @@ class Game:
             loop = asyncio.get_event_loop()
             loop.call_later(5, start_lobby_helper, self, self.lobby)
         return msg
+
+    async def onMsg_connect(self, data):
+        if data.get('id', None) in self.vessels:
+            return weakref.ref(self.vessels.get(data['id']))
+        else:
+            return 'Invalid connect'
 
     @admin_only
     async def onMsg_config_universe(self, data):

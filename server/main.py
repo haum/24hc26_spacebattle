@@ -41,13 +41,17 @@ def static_file(path):
     return impl
 
 
-async def send_to_obj(ws, obj, data):
-    h = getattr(obj, f'onMsg_{data['type']}', None)
+async def send_to_obj(ws, data):
+    h = getattr(ws.msgobj(), f'onMsg_{data['type']}', None)
     if h:
         res = await h(data)
-    else:
-        res = await obj.onUnknownMsg(data)
+    elif hasattr(ws.msgobj(), 'onUnknownMsg'):
+        res = await ws.msgobj().onUnknownMsg(data)
+
+    previous_msgobj = ws.msgobj()
     await send_msg(ws, res)
+    if previous_msgobj is not ws.msgobj():
+        await send_to_obj(ws, data)
 
 
 async def send_msg(ws, data):
@@ -55,9 +59,16 @@ async def send_msg(ws, data):
         await ws.close(message=data)
     elif isinstance(data, dict):
         await ws.send_json(data)
+    elif isinstance(data, weakref.ReferenceType):
+        if ws.msgobj() is not data():
+            if ws.msgobj() and hasattr(ws.msgobj(), 'set_sender'):
+                await ws.msgobj().set_sender(None)
+            if data() and hasattr(data(), 'set_sender'):
+                await data().set_sender(functools.partial(send_msg, ws))
+        ws.msgobj = data
     elif data:
         for o in data:
-            await ws.send_json(o)
+            await send_msg(ws, o)
 
 
 async def mainws(rq):
@@ -65,8 +76,8 @@ async def mainws(rq):
     await ws.prepare(rq)
 
     rq.app['websockets'].add(ws)
-    vessel = lambda: None
     try:
+        ws.msgobj = weakref.ref(rq.app['game'])
         await ws.send_json({'type': 'hello'})
         async for msg in ws:
             if msg.type == aiohttp.WSMsgType.TEXT:
@@ -78,27 +89,13 @@ async def mainws(rq):
 
                 inval = validate_msg(data)
                 if inval:
-                    await send_msg(ws, {
-                        'type': 'invalid_msg', 'errors': inval
-                    })
-                    await ws.close(message='Invalid message')
+                    await send_msg(ws, [
+                        {'type': 'invalid_msg', 'errors': inval},
+                        'Invalid message'
+                    ])
                     continue
 
-                if data['type'] == 'connect':
-                    vessels = rq.app['game'].vessels
-                    if data.get('id', None) in vessels:
-                        vessel0 = vessel
-                        vessel = weakref.ref(vessels.get(data['id']))
-                        if vessel0 != vessel:
-                            if vessel0() is not None:
-                                vessel0().set_sender(None)
-                            await vessel().send('Disconnected by another pilot')
-                        vessel().send = functools.partial(send_msg, ws)
-                        await send_to_obj(ws, vessel(), data)
-                    else:
-                        await ws.close(message='Invalid connect')
-                else:
-                    await send_to_obj(ws, vessel() or rq.app['game'], data)
+                await send_to_obj(ws, data)
 
             elif msg.type == aiohttp.WSMsgType.BINARY:
                 await ws.close(code=aiohttp.WSCloseCode.UNSUPPORTED_DATA)
@@ -108,8 +105,8 @@ async def mainws(rq):
                 print(f'ws connection closed with exception: {ws.exception()}')
     finally:
         rq.app['websockets'].discard(ws)
-        if vessel():
-            vessel().set_sender(None)
+        if ws.msgobj() and hasattr(ws.msgobj(), 'set_sender'):
+            await ws.msgobj().set_sender(None)
 
     return ws
 
