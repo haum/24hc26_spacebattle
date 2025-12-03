@@ -149,7 +149,7 @@ app.add_routes([
     web.get('/ws', mainws),
 ])
 
-for d in []:
+for d in ['2dview']:
     if os.path.isdir(d):
         app.router.add_route('GET', f'/{d}', redirect301(d+'/'))
         app.router.add_route('GET', f'/{d}/', static_file(d+'/index.html'))

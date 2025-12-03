@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>2D view</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<style>
+		html, body, canvas {
+			margin: 0;
+			padding: 0;
+			width: 100vw;
+			height: 100vh;
+			box-sizing: border-box;
+			overflow: hidden;
+		}
+		body {
+			overscroll-behavior: none;
+			user-select: none;
+		}
+		</style>
+	</head>
+	<body>
+		<canvas id="canvas"></canvas>
+		<script type="module">
+			const canvas = document.getElementById('canvas');
+			const ctx = canvas.getContext('2d');
+
+			function resize() {
+				const dpr = Math.max(1, window.devicePixelRatio || 1);
+				canvas.width = Math.floor(canvas.clientWidth * dpr);
+				canvas.height = Math.floor(canvas.clientHeight * dpr);
+				ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+				requestAnimationFrame(draw);
+			}
+			window.addEventListener('resize', resize);
+			resize();
+
+			function draw() {
+				// Background
+				const dark = window.matchMedia &&
+					window.matchMedia('(prefers-color-scheme: dark)').matches;
+				ctx.fillStyle = dark ? '#0f1115' : '#f4f4f6';
+				ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+
+				const W = canvas.width / (objs?.['size']?.[0] + 1)
+				const H = canvas.height / (objs?.['size']?.[1] + 1)
+
+				// Elements
+				ctx.fillStyle = '#ffcc00';
+				if ('vessels' in objs) for (const v of objs['vessels']) {
+					const x = v[1][0];
+					const y = v[1][1];
+					ctx.fillRect(x*W, y*H, W, H)
+				}
+
+				// Disconnected
+				if (ws.readyState != WebSocket.OPEN) {
+					ctx.fillStyle = '#ff0000';
+					ctx.globalAlpha = 0.8;
+					ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+					ctx.globalAlpha = 1.0;
+				}
+			}
+
+			requestAnimationFrame(draw);
+
+			let objs = {};
+			const ws = new WebSocket(
+				((location.protocol === 'https:') ? 'wss' : 'ws') + '://' +
+				location.host + '/ws'
+			);
+
+			ws.onmessage = e => {
+				const msg = JSON.parse(e.data)
+				if (msg.type == 'hello') {
+					const u = window.prompt('universe');
+					ws.send(JSON.stringify({
+						type: 'rq_world_report',
+						dt: 0.5,
+						universe: u,
+					}));
+				} else if (msg.type == 'world_report') {
+					objs = msg;
+					requestAnimationFrame(draw);
+				} else {
+					console.warn('Unknown', msg)
+				}
+			};
+
+			ws.onclose = e => {
+				alert('Disconnected: ' + e.reason);
+				requestAnimationFrame(draw);
+			}
+			ws.onerror = e => {
+				console.error(e);
+				requestAnimationFrame(draw);
+			}
+		</script>
+	</body>
+</html>
