@@ -71,6 +71,10 @@ class Vessel:
             })
         return msgs
 
+    @playing_only
+    async def onMsg_autodestruction(self, data):
+        await self.destroy()
+
     async def onMsg_ping(self, data):
         return {'type': 'pong', 'n': data.get('n', None)}
 

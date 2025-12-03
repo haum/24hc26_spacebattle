@@ -47,6 +47,16 @@ MSG_CONNECT = {
     }
 }
 
+MSG_AUTODESTRUCTION = {
+    "properties": {
+        "type": {
+            "const": "autodestruction"
+        },
+    },
+    "required": ["type"],
+    "additionalProperties": False
+}
+
 MSG_PING = {
     "properties": {
         "type": {
@@ -90,6 +100,7 @@ validators = dict(map(
     (
         ('start', MSG_START),
         ('connect', MSG_CONNECT),
+        ('autodestruction', MSG_AUTODESTRUCTION),
         ('ping', MSG_PING),
         ('config_universe', MSG_CONFIG_UNIVERSE),
     )
