@@ -105,8 +105,11 @@ async def mainws(rq):
                 print(f'ws connection closed with exception: {ws.exception()}')
     finally:
         rq.app['websockets'].discard(ws)
-        if ws.msgobj() and hasattr(ws.msgobj(), 'set_sender'):
-            await ws.msgobj().set_sender(None)
+        if ws.msgobj():
+            if hasattr(ws.msgobj(), 'onDisconnect'):
+                await ws.msgobj().onDisconnect()
+            if hasattr(ws.msgobj(), 'set_sender'):
+                await ws.msgobj().set_sender(None)
 
     return ws
 
