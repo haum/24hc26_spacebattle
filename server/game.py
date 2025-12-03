@@ -7,6 +7,7 @@ import time
 
 from universe import Universe
 from vessel import Vessel
+from observer import Observer
 
 
 def randomstr(k):
@@ -81,6 +82,8 @@ class Game:
                 o.onUpdate(t-lt, t-t0)
             lt = t
             await asyncio.sleep(0.1)
+        for o in u.iter('observer'):
+            await o.onEndOfUniverse()
         for v in u.iter('vessel'):
             await v.send([
                 {'type': 'won'},
@@ -104,6 +107,11 @@ class Game:
             return weakref.ref(self.vessels.get(data['id']))
         else:
             return 'Invalid connect'
+
+    @admin_only
+    async def onMsg_rq_world_report(self, data):
+        o = Observer(self.lobby)
+        return weakref.ref(o)
 
     @admin_only
     async def onMsg_config_universe(self, data):
