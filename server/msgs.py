@@ -70,6 +70,25 @@ MSG_PING = {
     "additionalProperties": False
 }
 
+MSG_RQ_WORLD_REPORT = {
+    "properties": {
+        "type": {
+            "const": "rq_world_report"
+        },
+        "key": {
+            "type": "string",
+        },
+        "dt": {
+            "type": "number"
+        },
+        "universe": {
+            "type": "string",
+        }
+    },
+    "required": ["type", "universe"],
+    "additionalProperties": False
+}
+
 MSG_CONFIG_UNIVERSE = {
     "properties": {
         "type": {
@@ -102,6 +121,7 @@ validators = dict(map(
         ('connect', MSG_CONNECT),
         ('autodestruction', MSG_AUTODESTRUCTION),
         ('ping', MSG_PING),
+        ('rq_world_report', MSG_RQ_WORLD_REPORT),
         ('config_universe', MSG_CONFIG_UNIVERSE),
     )
 ))
