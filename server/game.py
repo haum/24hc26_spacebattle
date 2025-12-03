@@ -45,9 +45,9 @@ class Game:
         self.tasks = set()
 
     async def destroy_vessels_of_team(self, team):
-        keys = list(k for k in self.vessels.keys() if k.startswith(team))
-        for k in keys:
-            await self.vessels.get(k).destroy()
+        for k in list(self.vessels.keys()):
+            if self.vessels.get(k).hname[0] == team:
+                await self.vessels.get(k).destroy()
 
     def new_universe(self, sz):
         if self.lobby and self.lobby.len('vessel') > 0:
