@@ -24,6 +24,7 @@
 		<script type="module">
 			const canvas = document.getElementById('canvas');
 			const ctx = canvas.getContext('2d');
+			let mouseinfo = ['-'];
 
 			function resize() {
 				const dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -69,6 +70,13 @@
 				ctx.fillStyle = '#ffcc00';
 				if ('vessels' in objs) sqs(objs['vessels'].map(v => v[1]));
 
+				// Mouseinfo
+				ctx.fillStyle = fg;
+				ctx.font = "2em Arial";
+				mouseinfo.forEach(
+					(line, i) => ctx.fillText(line, 20, 20+(i+1)*40)
+				);
+
 				// Disconnected
 				if (ws.readyState != WebSocket.OPEN) {
 					ctx.fillStyle = '#ff0000';
@@ -111,6 +119,36 @@
 				console.error(e);
 				requestAnimationFrame(draw);
 			}
+
+			canvas.onmousemove = e => {
+				const grid_sz = objs?.size ?? [50, 50];
+				const S = Math.min(canvas.width / (grid_sz[0] + 1), canvas.height / (grid_sz[1] + 1))
+				const grid_orig = [
+						(canvas.width-grid_sz[0]*S)/2,
+						(canvas.height-grid_sz[1]*S)/2,
+				];
+
+				const rect = canvas.getBoundingClientRect();
+				const x = Math.floor((e.clientX - rect.left - grid_orig[0])/S);
+				const y = Math.floor((e.clientY - rect.top - grid_orig[1])/S);
+
+				const prev_mouseinfo = mouseinfo.join('\n');
+				if (x < 0 || y < 0 || x >= grid_sz[0] || y >= grid_sz[1]) {
+					mouseinfo = ['-'];
+				} else {
+					mouseinfo = [`(${x};${y})`];
+					if ('vessels' in objs)
+						mouseinfo.push(
+							...objs['vessels']
+							.filter(v => v[1][0] == x && v[1][1] == y)
+							.map(v => `Vessel(${v[0]})`)
+						)
+				}
+				if (mouseinfo.join('\n') != prev_mouseinfo)
+					requestAnimationFrame(draw);
+			};
+
+			canvas.onmouseleave = _ => { mouseinfo = ['-']; };
 		</script>
 	</body>
 </html>
