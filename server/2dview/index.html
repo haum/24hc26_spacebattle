@@ -39,19 +39,35 @@
 				// Background
 				const dark = window.matchMedia &&
 					window.matchMedia('(prefers-color-scheme: dark)').matches;
-				ctx.fillStyle = dark ? '#0f1115' : '#f4f4f6';
+				const bg = dark ? '#0f1115' : '#f4f4f6';
+				const fg = !dark ? '#0f1115' : '#f4f4f6';
+
+				ctx.fillStyle = bg;
 				ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
 
-				const W = canvas.width / (objs?.['size']?.[0] + 1)
-				const H = canvas.height / (objs?.['size']?.[1] + 1)
-
-				// Elements
-				ctx.fillStyle = '#ffcc00';
-				if ('vessels' in objs) for (const v of objs['vessels']) {
-					const x = v[1][0];
-					const y = v[1][1];
-					ctx.fillRect(x*W, y*H, W, H)
+				// Utilities
+				const grid_sz = objs?.size ?? [50, 50];
+				const S = Math.min(canvas.width / (grid_sz[0] + 1), canvas.height / (grid_sz[1] + 1))
+				const grid_orig = [
+						(canvas.width-grid_sz[0]*S)/2,
+						(canvas.height-grid_sz[1]*S)/2,
+				];
+				const sqs = positions => {
+					const path = new Path2D();
+					for (const [x, y] of positions)
+						path.rect(grid_orig[0]+x*S, grid_orig[1]+y*S, S, S);
+					ctx.fill(path);
 				}
+
+				// Border
+				ctx.strokeStyle = fg;
+				const border_path = new Path2D();
+				border_path.rect(...grid_orig, ...grid_sz.map(v => v*S));
+				ctx.stroke(border_path);
+
+				// Vessels
+				ctx.fillStyle = '#ffcc00';
+				if ('vessels' in objs) sqs(objs['vessels'].map(v => v[1]));
 
 				// Disconnected
 				if (ws.readyState != WebSocket.OPEN) {
