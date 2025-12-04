@@ -32,7 +32,7 @@ class Vessel:
         self.send = no_send
         self.position = Position(
             self.u,
-            [random.randint(0, b) for b in self.u.size]
+            [random.randint(0, b-1) for b in self.u.size]
         )
         self.u.add(self, ['vessel'])
 
