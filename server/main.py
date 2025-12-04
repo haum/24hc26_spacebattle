@@ -10,6 +10,16 @@ import sys
 from msgs import validate_msg
 from game import Game
 
+try:
+    import nest_asyncio
+    from IPython import embed
+    nest_asyncio.apply()
+except ModuleNotFoundError:
+    embed = None
+
+game = None
+http_runner = None
+
 
 async def index(rq):
     return web.Response(text='24HC26 game server')
@@ -121,11 +131,12 @@ async def console():
     await loop.connect_read_pipe(lambda: protocol, sys.stdin)
     while await reader.readline():
         print('-----')
-        print(app['game'])
+        print(game)
 
 
 async def on_startup(app):
-    app['console'] = asyncio.create_task(console())
+    if not embed:
+        app['console'] = asyncio.create_task(console())
 
 
 async def on_shutdown(app):
@@ -135,26 +146,69 @@ async def on_shutdown(app):
             message='Server shutdown'
         )
 
-app = web.Application()
 
-app['game'] = Game()
+async def start_server():
+    app = web.Application()
 
-app.on_startup.append(on_startup)
+    app['game'] = Game()
+    app['websockets'] = weakref.WeakSet()
 
-app['websockets'] = weakref.WeakSet()
-app.on_shutdown.append(on_shutdown)
+    app.on_startup.append(on_startup)
+    app.on_shutdown.append(on_shutdown)
 
-app.add_routes([
-    web.get('/', index),
-    web.get('/ws', mainws),
-])
+    app.add_routes([
+        web.get('/', index),
+        web.get('/ws', mainws),
+    ])
 
-for d in ['2dview']:
-    if os.path.isdir(d):
-        app.router.add_route('GET', f'/{d}', redirect301(d+'/'))
-        app.router.add_route('GET', f'/{d}/', static_file(d+'/index.html'))
-        app.router.add_route('GET', f'/{d}/' + '{path:.*}', static_file(d))
-    else:
-        app.router.add_route('GET', f'/{d}', static_file(d))
+    for d in ['2dview']:
+        if os.path.isdir(d):
+            app.router.add_route('GET', f'/{d}', redirect301(d+'/'))
+            app.router.add_route('GET', f'/{d}/', static_file(d+'/index.html'))
+            app.router.add_route('GET', f'/{d}/' + '{path:.*}', static_file(d))
+        else:
+            app.router.add_route('GET', f'/{d}', static_file(d))
 
-web.run_app(app)
+    global game
+    game = app['game']
+
+    global http_runner
+    http_runner = web.AppRunner(app)
+    await http_runner.setup()
+    site = web.TCPSite(http_runner, "0.0.0.0", 8080)
+    await site.start()
+
+    for sock in http_runner.addresses:
+        print(''.join([
+            '\033[33m',
+            'Serving on ',
+            '\033[93;1m',
+            f'http://{sock[0]}:{sock[1]}/',
+            '\033[0m',
+        ]))
+
+
+async def main():
+    await start_server()
+
+    if embed:
+        embed(
+            using=False,
+            use_asyncio=True,
+            user_ns={
+                'game': game,
+                'g': type('', (), {'__repr__': lambda _: str(game)})(),
+            }
+        )
+        await http_runner.cleanup()
+        loop = asyncio.get_event_loop()
+        for task in asyncio.all_tasks(loop):
+            task.cancel()
+        loop.stop()
+
+loop = asyncio.get_event_loop()
+loop.create_task(main())
+try:
+    loop.run_forever()
+except KeyboardInterrupt:
+    pass
