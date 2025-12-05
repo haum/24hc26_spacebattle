@@ -13,3 +13,6 @@ ipython = [
     "ipython",
     "nest_asyncio",
 ]
+
+[tool.setuptools]
+py-modules = []
