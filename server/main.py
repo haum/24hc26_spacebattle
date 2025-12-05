@@ -7,8 +7,8 @@ import os
 import weakref
 import sys
 
-from msgs import validate_msg
-from game import Game
+from messages import validate_msg
+from game.game import Game
 
 try:
     import nest_asyncio

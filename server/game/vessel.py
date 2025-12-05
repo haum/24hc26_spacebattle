@@ -2,7 +2,7 @@ import functools
 import weakref
 import random
 
-from position import Position
+from game.position import Position
 
 
 def playing_only(f):

@@ -5,9 +5,9 @@ import random
 import string
 import time
 
-from universe import Universe
-from vessel import Vessel
-from observer import Observer
+from game.universe import Universe
+from game.vessel import Vessel
+from game.observer import Observer
 
 
 def randomstr(k):
