@@ -1,115 +1,12 @@
 import jsonschema
 import itertools
 
+from .admin import *
+from .game import *
+from .vessels import *
+from .misc import *
+
 MAX_RESOURCES = 30
-MAX_VESSELS = 6
-MAX_STAT = 10
-STAT_SZ = 4
-
-MSG_START = {
-    "properties": {
-        "type": {
-            "const": "start"
-            },
-        "team": {
-            "type": "string"
-            },
-        "vessels": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": MAX_VESSELS,
-            "items": {
-                "type": "array",
-                "minItems": STAT_SZ,
-                "maxItems": STAT_SZ,
-                "items": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": MAX_STAT
-                    }
-                }
-            }
-        },
-    "required": ["type", "team", "vessels"],
-    "additionalProperties": False
-}
-
-MSG_CONNECT = {
-    "properties": {
-        "type": {
-            "const": "connect"
-        },
-        "id": {
-            "type": "string"
-        },
-        "required": ["type", "id"],
-        "additionalProperties": False
-    }
-}
-
-MSG_AUTODESTRUCTION = {
-    "properties": {
-        "type": {
-            "const": "autodestruction"
-        },
-    },
-    "required": ["type"],
-    "additionalProperties": False
-}
-
-MSG_PING = {
-    "properties": {
-        "type": {
-            "const": "ping"
-        },
-        "n": {
-            "type": ["string", "number"]
-        }
-    },
-    "required": ["type"],
-    "additionalProperties": False
-}
-
-MSG_RQ_WORLD_REPORT = {
-    "properties": {
-        "type": {
-            "const": "rq_world_report"
-        },
-        "key": {
-            "type": "string",
-        },
-        "dt": {
-            "type": "number"
-        },
-        "universe": {
-            "type": "string",
-        }
-    },
-    "required": ["type", "universe"],
-    "additionalProperties": False
-}
-
-MSG_CONFIG_UNIVERSE = {
-    "properties": {
-        "type": {
-            "const": "config_universe"
-        },
-        "key": {
-            "type": "string",
-        },
-        "size": {
-            "type": "array",
-            "minItems": 2,
-            "maxItems": 4,
-            "items": {
-                "type": "integer",
-                "minimum": 0,
-            }
-        }
-    },
-    "required": ["type", "size"],
-    "additionalProperties": False
-}
 
 validators = dict(map(
     lambda kv: (
