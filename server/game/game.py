@@ -1,11 +1,13 @@
 import asyncio
 import functools
 import weakref
+import math
 import random
 import string
 import time
 
 from game.universe import Universe
+from game.asteroid import Asteroid
 from game.vessel import Vessel
 from game.observer import Observer
 
@@ -85,6 +87,9 @@ class Game:
         return ret
 
     async def universe_update_task(self, u):
+        for _ in range(int(math.prod(u.size)/100)):
+            p = random_position(u)
+            Asteroid(u, p)
         for v in u.iter('vessel'):
             await v.start()
         t0 = time.time()
