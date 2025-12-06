@@ -53,7 +53,7 @@ class Game:
         ADMIN_KEY = None
 
     def __init__(self):
-        self.lobby = Universe(2)
+        self.lobby = Universe(randomstr(5), 2)
         self.universes = set()
         self.vessels = weakref.WeakValueDictionary()
         self.tasks = set()
@@ -69,7 +69,7 @@ class Game:
             self.tasks.add(asyncio.create_task(
                 self.universe_update_task(self.lobby)
             ))
-        self.lobby = Universe(sz)
+        self.lobby = Universe(randomstr(5), sz)
 
     def add_in_lobby(self, team, vessels_stats):
         ret = []
@@ -128,7 +128,14 @@ class Game:
 
     @admin_only
     async def onMsg_rq_world_report(self, data):
-        o = Observer(self.lobby)
+        m = list(u for u in self.universes if u.name == data.get('universe'))
+        if not m and self.lobby.name == data.get('universe'):
+            m = [self.lobby]
+        if not m and data.get('universe') == '':
+            m = [self.lobby]
+        if not m:
+            return 'Unknown universe'
+        o = Observer(m[0])
         return weakref.ref(o)
 
     @admin_only

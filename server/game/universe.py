@@ -3,7 +3,8 @@ import weakref
 
 
 class Universe:
-    def __init__(self, size):
+    def __init__(self, name, size):
+        self.name = name
         self.objects = set()
         self.groups = collections.defaultdict(set)
         self.refs = collections.defaultdict(weakref.WeakSet)
@@ -40,7 +41,7 @@ class Universe:
         return len(self.refs[group]) if group in self.refs else 0
 
     def __str__(self):
-        s = f'Universe(\n\tsize={self.size}'
+        s = f'Universe(\n\tsize={self.size}\n\tname={self.name}'
         for r in self.refs.keys():
             s += f'\n\t{r}=['
             for o in self.refs[r]:
