@@ -14,6 +14,17 @@ def randomstr(k):
     return ''.join(random.choices(string.ascii_letters, k=k))
 
 
+def random_position(u):
+    for _ in range(20):
+        p = [random.randint(0, b-1) for b in u.size]
+        if all(
+            c.position.get() != p
+            for c in u.iter('collidable')
+        ):
+            return p
+    return p  # Need to be more clever here
+
+
 def admin_only(f):
     @functools.wraps(f)
     async def wrapper(game, data):
@@ -61,10 +72,12 @@ class Game:
     def add_in_lobby(self, team, vessels_stats):
         ret = []
         for i, stats in enumerate(vessels_stats):
+            p = random_position(self.lobby)
             v = Vessel(
                 self.lobby,
                 [team, i+1, randomstr(5)],
-                stats
+                stats,
+                p
             )
             secret_name = v.name(True)
             self.vessels[secret_name] = v

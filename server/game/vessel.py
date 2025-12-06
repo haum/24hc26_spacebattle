@@ -19,7 +19,7 @@ async def no_send(_):
 
 
 class Vessel:
-    def __init__(self, universe, hname, stats):
+    def __init__(self, universe, hname, stats, position):
         self.u = weakref.proxy(universe)
 
         self.frozen = True
@@ -30,11 +30,8 @@ class Vessel:
         self.detection = stats[3]
 
         self.send = no_send
-        self.position = Position(
-            self.u,
-            [random.randint(0, b-1) for b in self.u.size]
-        )
-        self.u.add(self, ['vessel'])
+        self.position = Position(self.u, position)
+        self.u.add(self, ['vessel', 'collidable'])
 
     async def destroy(self):
         await self.send('Vessel destroyed')
