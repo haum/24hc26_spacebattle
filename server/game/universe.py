@@ -7,7 +7,7 @@ class Universe:
         self.objects = set()
         self.groups = collections.defaultdict(set)
         self.refs = collections.defaultdict(weakref.WeakSet)
-        self.size = [10] * size if isinstance(size, int) else size
+        self.size = [50] * size if isinstance(size, int) else size
 
     def add(self, o, groups):
         for g in groups:
