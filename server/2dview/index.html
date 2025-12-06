@@ -66,6 +66,10 @@
 				border_path.rect(...grid_orig, ...grid_sz.map(v => v*S));
 				ctx.stroke(border_path);
 
+				// Asteroids
+				ctx.fillStyle = '#993300';
+				if ('asteroids' in objs) sqs(objs['asteroids'])
+
 				// Vessels
 				ctx.fillStyle = '#ffcc00';
 				if ('vessels' in objs) sqs(objs['vessels'].map(v => v[1]));
@@ -137,6 +141,12 @@
 					mouseinfo = ['-'];
 				} else {
 					mouseinfo = [`(${x};${y})`];
+					if ('asteroids' in objs)
+						mouseinfo.push(
+							...objs['asteroids']
+							.filter(v => v[0] == x && v[1] == y)
+							.map(v => 'Asteroid')
+						)
 					if ('vessels' in objs)
 						mouseinfo.push(
 							...objs['vessels']

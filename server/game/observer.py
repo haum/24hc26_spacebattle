@@ -24,6 +24,10 @@ class Observer:
                 await self.send({
                     'type': 'world_report',
                     'size': self.u.size,
+                    'asteroids': [
+                        a.position.get()
+                        for a in self.u.iter('asteroid')
+                    ],
                     'vessels': [
                         (v.name(), v.position.get())
                         for v in self.u.iter('vessel')
