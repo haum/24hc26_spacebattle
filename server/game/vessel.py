@@ -1,6 +1,5 @@
 import functools
 import weakref
-import random
 
 from game.position import Position
 
