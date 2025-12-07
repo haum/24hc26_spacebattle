@@ -206,9 +206,7 @@ async def main():
             task.cancel()
         loop.stop()
 
-loop = asyncio.get_event_loop()
-loop.create_task(main())
 try:
-    loop.run_forever()
+    asyncio.run(main())
 except KeyboardInterrupt:
     pass
