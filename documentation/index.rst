@@ -5,3 +5,4 @@
    :maxdepth: 2
 
    idee.rst
+   protocole.rst
