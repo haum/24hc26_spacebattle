@@ -60,6 +60,14 @@
 					ctx.fill(path);
 				}
 
+				// Disconnected
+				if (ws.readyState != WebSocket.OPEN) {
+					ctx.fillStyle = '#ff0000';
+					ctx.globalAlpha = 0.2;
+					ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+					ctx.globalAlpha = 1.0;
+				}
+
 				// Border
 				ctx.strokeStyle = fg;
 				const border_path = new Path2D();
@@ -81,13 +89,6 @@
 					(line, i) => ctx.fillText(line, 20, 20+(i+1)*40)
 				);
 
-				// Disconnected
-				if (ws.readyState != WebSocket.OPEN) {
-					ctx.fillStyle = '#ff0000';
-					ctx.globalAlpha = 0.8;
-					ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-					ctx.globalAlpha = 1.0;
-				}
 			}
 
 			requestAnimationFrame(draw);
