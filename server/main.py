@@ -202,8 +202,11 @@ async def main():
         )
         await http_runner.cleanup()
         loop = asyncio.get_event_loop()
+        this_task = asyncio.current_task(loop)
         for task in asyncio.all_tasks(loop):
-            task.cancel()
+            if task is not this_task:
+                task.cancel()
+        await asyncio.sleep(0)
         loop.stop()
 
 try:
