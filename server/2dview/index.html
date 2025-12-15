@@ -82,6 +82,10 @@
 				ctx.fillStyle = '#ffcc00';
 				if ('vessels' in objs) sqs(objs['vessels'].map(v => v[1]));
 
+				// Torpedos
+				ctx.fillStyle = '#ff0000';
+				if ('torpedos' in objs) sqs(objs['torpedos'].map(v => v[1]));
+
 				// Mouseinfo
 				ctx.fillStyle = fg;
 				ctx.font = "2em Arial";
@@ -153,6 +157,12 @@
 							...objs['vessels']
 							.filter(v => v[1][0] == x && v[1][1] == y)
 							.map(v => `Vessel(${v[0]})`)
+						)
+					if ('torpedos' in objs)
+						mouseinfo.push(
+							...objs['torpedos']
+							.filter(t => t[1][0] == x && t[1][1] == y)
+							.map(t => `Torpedo(${t[0]})`)
 						)
 				}
 				if (mouseinfo.join('\n') != prev_mouseinfo)
