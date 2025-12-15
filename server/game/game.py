@@ -6,10 +6,10 @@ import random
 import string
 import time
 
-from game.universe import Universe
-from game.asteroid import Asteroid
-from game.vessel import Vessel
-from game.observer import Observer
+from .universe import Universe
+from .asteroid import Asteroid
+from .vessel import Vessel
+from .observer import Observer
 
 
 def randomstr(k):

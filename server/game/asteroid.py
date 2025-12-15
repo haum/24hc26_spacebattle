@@ -1,6 +1,6 @@
 import weakref
 
-from game.position import Position
+from .position import Position
 
 
 class Asteroid:
