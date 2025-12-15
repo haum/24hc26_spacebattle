@@ -30,7 +30,7 @@ class Universe:
 
     def iter(self, group):
         if group in self.refs:
-            for o in self.refs[group]:
+            for o in weakref.WeakSet(self.refs[group]):
                 yield o
 
     def clean(self):
