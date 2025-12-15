@@ -20,4 +20,5 @@ class Position:
             return self.pos
 
     def __str__(self):
-        return f'Position({str(self.pos)})'
+        p = ', '.join(map(lambda x: f'{x:.1f}', self.pos))
+        return f'Position({p})'
