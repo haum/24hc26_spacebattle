@@ -32,6 +32,13 @@ class Observer:
                         (v.name(), v.position.get())
                         for v in self.u.iter('vessel')
                     ],
+                    'torpedos': [
+                        (
+                            t.emitter.name() if t.emitter else '',
+                            t.position.get()
+                        )
+                        for t in self.u.iter('torpedo')
+                    ],
                 })
                 await asyncio.sleep(self.delay)
             except ReferenceError:
