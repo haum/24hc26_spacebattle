@@ -1,10 +1,10 @@
 import jsonschema
 import itertools
 
-from .admin import *
-from .game import *
-from .vessels import *
-from .misc import *
+from .admin import MSG_RQ_WORLD_REPORT, MSG_CONFIG_UNIVERSE
+from .game import MSG_START, MSG_CONNECT
+from .vessels import MSG_AUTODESTRUCTION
+from .misc import MSG_PING
 
 MAX_RESOURCES = 30
 
