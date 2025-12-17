@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import asyncio
 import aiohttp
 import aiohttp.web as web
