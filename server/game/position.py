@@ -15,7 +15,11 @@ class Position:
 
     def get(self, integer=True):
         if integer:
-            return list(map(round, self.pos))
+            return list(map(
+                lambda x, u: round(x) % u,
+                self.pos,
+                self.u.size
+            ))
         else:
             return self.pos
 
