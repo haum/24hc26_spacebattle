@@ -11,7 +11,7 @@ dependencies = [
 [project.optional-dependencies]
 ipython = [
     "ipython",
-    "nest_asyncio",
+    "nest_asyncio2",
 ]
 
 [tool.setuptools]

@@ -13,9 +13,9 @@ from messages import validate_msg
 from game.game import Game
 
 try:
-    import nest_asyncio
+    import nest_asyncio2
     from IPython import embed
-    nest_asyncio.apply()
+    nest_asyncio2.apply()
 except ModuleNotFoundError:
     embed = None
 
