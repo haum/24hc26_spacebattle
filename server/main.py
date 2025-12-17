@@ -192,6 +192,7 @@ async def start_server():
 
 async def main():
     await start_server()
+    this_task = asyncio.current_task()
 
     if embed:
         embed(
@@ -203,13 +204,16 @@ async def main():
             }
         )
         await http_runner.cleanup()
-        loop = asyncio.get_event_loop()
-        this_task = asyncio.current_task(loop)
-        for task in asyncio.all_tasks(loop):
+        for task in asyncio.all_tasks():
             if task is not this_task:
                 task.cancel()
         await asyncio.sleep(0)
-        loop.stop()
+        asyncio.get_event_loop().stop()
+
+    await asyncio.gather(*filter(
+        lambda x: x != this_task,
+        asyncio.all_tasks()
+    ))
 
 try:
     asyncio.run(main())
