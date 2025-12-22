@@ -20,13 +20,16 @@ class Universe:
         if groups is None:
             groups = list(self.groups[o])
         for g in groups:
-            self.refs[g].remove(o)
+            if o in self.refs[g]:
+                self.refs[g].remove(o)
             if not self.refs[g]:
                 self.refs.pop(g)
-            self.groups[o].remove(g)
+            if g in self.groups[o]:
+                self.groups[o].remove(g)
         if not self.groups[o]:
             self.groups.pop(o)
-            self.objects.remove(o)
+            if o in self.objects:
+                self.objects.remove(o)
 
     def iter(self, group):
         if group in self.refs:
