@@ -13,7 +13,7 @@ class Torpedo:
         self.die = time.time() + lifetime
         self.u.add(self, ['torpedo', 'collidable', 'update'])
 
-    def onUpdate(self, _dt, _t):
+    async def onUpdate(self, _dt, _t):
         if time.time() >= self.die:
             self.u.remove(self)
             return

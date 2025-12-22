@@ -97,7 +97,7 @@ class Game:
         while len(teams_in_universe(u)) > 1:
             t = time.time()
             for o in u.iter('update'):
-                o.onUpdate(t-lt, t-t0)
+                await o.onUpdate(t-lt, t-t0)
             lt = t
             await asyncio.sleep(0.1)
         for o in u.iter('observer'):
