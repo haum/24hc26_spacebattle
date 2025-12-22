@@ -3,6 +3,8 @@ import weakref
 
 from .position import Position
 
+HP_LUT = [1, 21, 41, 61, 81, 101, 121, 146, 171, 196]
+
 
 def playing_only(f):
     @functools.wraps(f)
@@ -23,10 +25,9 @@ class Vessel:
 
         self.frozen = True
         self.hname = hname
-        self.hp = stats[0]
-        self.attack = stats[1]
-        self.speed = stats[2]
-        self.detection = stats[3]
+        self.stats = stats
+
+        self.hp = HP_LUT[stats[0]]
 
         self.send = no_send
         self.position = Position(self.u, position)
@@ -59,10 +60,8 @@ class Vessel:
         msgs = []
         msgs.append({
             'type': 'stats',
+            'stats': self.stats,
             'hp': self.hp,
-            'attack': self.attack,
-            'speed': self.speed,
-            'detection': self.detection,
         })
         if not self.frozen:
             msgs.append({
@@ -81,8 +80,9 @@ class Vessel:
         return 'Unknown message'
 
     def __str__(self):
+        stats = ' '.join(map(lambda v, k: f'{k}:{v}', self.stats, 'HASD'))
         return ''.join([
-            f'Vessel(p={self.position}, hp={self.hp}, attack={self.attack}, ',
-            f'speed={self.speed}, detection={self.detection}, ',
+            f'Vessel(p={self.position}, hp={self.hp}, ',
+            f'stats=({stats}), ',
             f'hname={self.hname})',
         ])
