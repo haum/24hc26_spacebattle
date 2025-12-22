@@ -48,6 +48,11 @@ class Vessel:
         else:
             return ':'.join(map(str, self.hname[:2]))
 
+    async def damage(self, n):
+        self.hp -= n
+        if self.hp <= 0:
+            await self.destroy()
+
     async def start(self):
         self.frozen = False
         await self.send({
