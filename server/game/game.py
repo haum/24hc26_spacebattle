@@ -99,7 +99,10 @@ class Game:
             for o in u.iter('update'):
                 await o.onUpdate(t-lt, t-t0)
             lt = t
-            await asyncio.sleep(0.1)
+            delay = t + 0.1 - time.time()
+            if delay > 0:
+                await asyncio.sleep(delay)
+
         for o in u.iter('observer'):
             await o.onEndOfUniverse()
         for v in u.iter('vessel'):
