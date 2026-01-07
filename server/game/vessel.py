@@ -1,7 +1,7 @@
 import functools
 import weakref
 
-from .position import Position
+from .vector import Vector
 
 HP_LUT = [1, 21, 41, 61, 81, 101, 121, 146, 171, 196]
 
@@ -30,7 +30,7 @@ class Vessel:
         self.hp = HP_LUT[stats[0]]
 
         self.send = no_send
-        self.position = Position(self.u, position)
+        self.position = Vector(self.u, position)
         self.u.add(self, ['vessel', 'collidable'])
 
     async def destroy(self):

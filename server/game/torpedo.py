@@ -1,7 +1,7 @@
 import weakref
 import time
 
-from .position import Position
+from .vector import Vector
 from .vessel import Vessel
 
 
@@ -9,7 +9,7 @@ class Torpedo:
     def __init__(self, universe, position, speed, lifetime, emitter=None):
         self.u = weakref.proxy(universe)
         self.emitter = weakref.proxy(emitter)
-        self.position = Position(self.u, position)
+        self.position = Vector(self.u, position)
         self.speed = speed
         self.die = time.time() + lifetime
         self.u.add(self, ['torpedo', 'collidable', 'update'])

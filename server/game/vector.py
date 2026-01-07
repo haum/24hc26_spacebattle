@@ -1,4 +1,4 @@
-class Position:
+class Vector:
     def __init__(self, u, pos):
         self.u = u
         if isinstance(pos, int):
@@ -25,4 +25,4 @@ class Position:
 
     def __str__(self):
         p = ', '.join(map(lambda x: f'{x:.1f}', self.pos))
-        return f'Position({p})'
+        return f'Vector({p})'

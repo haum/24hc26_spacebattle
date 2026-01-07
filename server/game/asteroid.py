@@ -1,12 +1,12 @@
 import weakref
 
-from .position import Position
+from .vector import Vector
 
 
 class Asteroid:
     def __init__(self, universe, position):
         self.u = weakref.proxy(universe)
-        self.position = Position(self.u, position)
+        self.position = Vector(self.u, position)
         self.u.add(self, ['asteroid', 'collidable'])
 
     async def destroy(self):
