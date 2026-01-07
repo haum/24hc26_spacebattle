@@ -2,7 +2,6 @@ import weakref
 import time
 
 from .vector import Vector
-from .vessel import Vessel
 
 
 class Torpedo:
@@ -23,7 +22,8 @@ class Torpedo:
         for o in self.u.iter('collidable'):
             if o != self and o.position.get() == self.position.get():
                 self.u.remove(self)
-                if isinstance(o, Vessel):
+                cls = o.__class__.__name__
+                if cls == 'Vessel':
                     await o.damage(20)
 
     def __str__(self):
