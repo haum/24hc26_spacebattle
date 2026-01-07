@@ -4,6 +4,7 @@ import weakref
 
 class Universe:
     def __init__(self, name, size):
+        self.t = 0
         self.name = name
         self.objects = set()
         self.groups = collections.defaultdict(set)

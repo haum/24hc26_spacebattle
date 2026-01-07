@@ -106,13 +106,13 @@ class Game:
         for v in u.iter('vessel'):
             await v.start()
         t0 = time.time()
-        lt = t0
+        lt = 0
         while len(teams_in_universe(u)) > 1:
-            t = time.time()
+            u.t = time.time()-t0
             for o in u.iter('update'):
-                await o.onUpdate(t-lt, t-t0)
-            lt = t
-            delay = t + 0.1 - time.time()
+                await o.onUpdate(u.t-lt, u.t)
+            lt = u.t
+            delay = t0 + u.t + 0.1 - time.time()
             if delay > 0:
                 await asyncio.sleep(delay)
 
