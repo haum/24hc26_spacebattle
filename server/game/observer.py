@@ -1,5 +1,4 @@
 import asyncio
-import weakref
 
 
 async def no_send(_):
@@ -8,7 +7,7 @@ async def no_send(_):
 
 class Observer:
     def __init__(self, universe):
-        self.u = weakref.proxy(universe)
+        self.u = universe
         self.send = no_send
         self.u.add(self, ['observer'])
         self.delay = 0.1
@@ -34,7 +33,7 @@ class Observer:
                     ],
                     'torpedos': [
                         (
-                            t.emitter.name() if t.emitter else '',
+                            t.emitter().name() if t.emitter() else '',
                             t.position.get()
                         )
                         for t in self.u.iter('torpedo')

@@ -89,7 +89,7 @@ class Game:
         for i, stats in enumerate(vessels_stats):
             p = random_position(self.lobby)
             v = Vessel(
-                self.lobby,
+                weakref.proxy(self.lobby),
                 [team, i+1, randomstr(5)],
                 stats,
                 p

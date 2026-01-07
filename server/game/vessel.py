@@ -1,5 +1,4 @@
 import functools
-import weakref
 
 from .vector import Vector
 
@@ -21,7 +20,7 @@ async def no_send(_):
 
 class Vessel:
     def __init__(self, universe, hname, stats, position):
-        self.u = weakref.proxy(universe)
+        self.u = universe
 
         self.frozen = True
         self.hname = hname

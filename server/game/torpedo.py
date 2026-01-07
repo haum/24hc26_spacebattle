@@ -7,8 +7,8 @@ from .vessel import Vessel
 
 class Torpedo:
     def __init__(self, universe, position, speed, lifetime, emitter=None):
-        self.u = weakref.proxy(universe)
-        self.emitter = weakref.proxy(emitter)
+        self.u = universe
+        self.emitter = weakref.ref(emitter) if emitter else lambda: None
         self.position = Vector(self.u, position)
         self.speed = speed
         self.die = time.time() + lifetime
