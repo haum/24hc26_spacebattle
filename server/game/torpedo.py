@@ -24,6 +24,8 @@ class Torpedo:
                 cls = o.__class__.__name__
                 if cls == 'Vessel':
                     await o.damage(20)
+                elif cls == 'Mine':
+                    self.u.remove(o)
 
     def __str__(self):
         return ''.join((
