@@ -13,11 +13,11 @@ from messages import validate_msg
 from game.game import Game
 
 try:
+    import IPython
     import nest_asyncio2
-    from IPython import embed
     nest_asyncio2.apply()
 except ModuleNotFoundError:
-    embed = None
+    IPython = None
 
 game = None
 http_runner = None
@@ -137,7 +137,7 @@ async def console():
 
 
 async def on_startup(app):
-    if not embed:
+    if not IPython:
         app['console'] = asyncio.create_task(console())
 
 
@@ -194,15 +194,26 @@ async def main():
     await start_server()
     this_task = asyncio.current_task()
 
-    if embed:
-        embed(
-            using=False,
-            use_asyncio=True,
-            user_ns={
-                'game': game,
-                'g': type('', (), {'__repr__': lambda _: str(game)})(),
-            }
+    if IPython:
+        embed_namespace = {
+            'game': game,
+            'g': type('', (), {'__repr__': lambda _: str(game)})(),
+        }
+
+        from traitlets.config import Config
+        c = Config()
+        c.InteractiveShell.autoawait = True
+        c.InteractiveShell.autocall = 1
+        c.InteractiveShell.banner1 = ''
+        c.InteractiveShell.call_pdb = True
+        c.InteractiveShell.enable_tip = False
+        c.InteractiveShell.show_rewritten_input = True
+        ipshell = IPython.terminal.embed.InteractiveShellEmbed(
+            config=c,
+            user_ns=embed_namespace,
         )
+        ipshell()
+
         await http_runner.cleanup()
         for task in asyncio.all_tasks():
             if task is not this_task:
