@@ -16,6 +16,19 @@ MSG_FIRE_TORPEDO = {
     "additionalProperties": False
 }
 
+MSG_DROP_MINE = {
+    "properties": {
+        "type": {
+            "const": "drop_mine"
+        },
+        "delay": {
+            "type": "number",
+        },
+    },
+    "required": ["type"],
+    "additionalProperties": False
+}
+
 MSG_AUTODESTRUCTION = {
     "properties": {
         "type": {

@@ -3,7 +3,7 @@ import itertools
 
 from .admin import MSG_RQ_WORLD_REPORT, MSG_CONFIG_UNIVERSE
 from .game import MSG_START, MSG_CONNECT
-from .vessels import MSG_FIRE_TORPEDO, MSG_AUTODESTRUCTION
+from .vessels import MSG_FIRE_TORPEDO, MSG_DROP_MINE, MSG_AUTODESTRUCTION
 from .misc import MSG_PING
 
 MAX_RESOURCES = 30
@@ -17,6 +17,7 @@ validators = dict(map(
         ('start', MSG_START),
         ('connect', MSG_CONNECT),
         ('fire_torpedo', MSG_FIRE_TORPEDO),
+        ('drop_mine', MSG_DROP_MINE),
         ('autodestruction', MSG_AUTODESTRUCTION),
         ('ping', MSG_PING),
         ('rq_world_report', MSG_RQ_WORLD_REPORT),
