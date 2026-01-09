@@ -10,6 +10,7 @@ from .game import (
     MSG_CONNECT,
 )
 from .vessels import (
+    MSG_MOVE,
     MSG_FIRE_TORPEDO,
     MSG_DROP_MINE,
     MSG_AUTODESTRUCTION,
@@ -28,6 +29,7 @@ validators = dict(map(
     (
         ('start', MSG_START),
         ('connect', MSG_CONNECT),
+        ('move', MSG_MOVE),
         ('fire_torpedo', MSG_FIRE_TORPEDO),
         ('drop_mine', MSG_DROP_MINE),
         ('autodestruction', MSG_AUTODESTRUCTION),

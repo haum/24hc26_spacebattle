@@ -1,3 +1,21 @@
+MSG_MOVE = {
+    "properties": {
+        "type": {
+            "const": "move"
+        },
+        "direction": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 4,
+            "items": {
+                "type": "integer",
+            }
+        },
+    },
+    "required": ["type", "direction"],
+    "additionalProperties": False
+}
+
 MSG_FIRE_TORPEDO = {
     "properties": {
         "type": {
