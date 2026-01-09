@@ -38,6 +38,13 @@ class Observer:
                         )
                         for t in self.u.iter('torpedo')
                     ],
+                    'mines': [
+                        (
+                            m.emitter().name() if m.emitter() else '',
+                            m.position.get()
+                        )
+                        for m in self.u.iter('mine')
+                    ],
                 })
                 await asyncio.sleep(self.delay)
             except ReferenceError:
