@@ -100,27 +100,32 @@ class Game:
         return ret
 
     async def universe_update_task(self, u):
-        for _ in range(int(math.prod(u.size)/100)):
-            p = random_position(u)
-            Asteroid(u, p)
-        for v in u.iter('vessel'):
-            await v.start()
-        t0 = time.time()
-        lt = 0
-        while len(teams_in_universe(u)) > 1:
-            u.t = time.time()-t0
-            for o in u.iter('update'):
-                await o.onUpdate(u.t-lt, u.t)
-            lt = u.t
-            delay = t0 + u.t + 0.1 - time.time()
-            if delay > 0:
-                await asyncio.sleep(delay)
+        try:
+            for _ in range(int(math.prod(u.size)/100)):
+                p = random_position(u)
+                Asteroid(u, p)
+            for v in u.iter('vessel'):
+                await v.start()
+            t0 = time.time()
+            lt = 0
+            while len(teams_in_universe(u)) > 1:
+                u.t = time.time()-t0
+                for o in u.iter('update'):
+                    await o.onUpdate(u.t-lt, u.t)
+                lt = u.t
+                delay = t0 + u.t + 0.1 - time.time()
+                if delay > 0:
+                    await asyncio.sleep(delay)
+        except Exception:
+            import traceback
+            traceback.print_exc(file=traceback.sys.stderr)
 
         for o in u.iter('observer'):
             await o.onEndOfUniverse()
+        won = len(teams_in_universe(u)) == 1
         for v in u.iter('vessel'):
             await v.send([
-                {'type': 'won'},
+                {'type': 'won' if won else 'end'},
                 'End of game'
             ])
         u.clean()
