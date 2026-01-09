@@ -2,6 +2,7 @@ import functools
 
 from .vector import Vector
 from .torpedo import Torpedo
+from .mine import Mine
 
 HP_LUT = [1, 21, 41, 61, 81, 101, 121, 146, 171, 196]
 
@@ -79,6 +80,13 @@ class Vessel:
         Torpedo(
             self.u, self.position.get(), data['direction'],
             self.u.t+5, self
+        )
+
+    @playing_only
+    async def onMsg_drop_mine(self, data):
+        Mine(
+            self.u, self.position.get(),
+            self.u.t + max(0.1, data['delay']), self
         )
 
     @playing_only
