@@ -1,6 +1,6 @@
 import functools
 
-from .vector import Vector
+from .vector import Vector, hypervoxels_line
 from .torpedo import Torpedo
 from .mine import Mine
 
@@ -29,6 +29,7 @@ class Vessel:
         self.stats = stats
 
         self.hp = HP_LUT[stats[0]]
+        self.move = None
 
         self.send = no_send
         self.position = Vector(self.u, position)
@@ -76,6 +77,11 @@ class Vessel:
         return msgs
 
     @playing_only
+    async def onMsg_move(self, data):
+        d = data['direction']
+        self.move = d + [0] * (len(self.u.size) - len(d))
+
+    @playing_only
     async def onMsg_fire_torpedo(self, data):
         Torpedo(
             self.u, self.position.get(), data['direction'],
@@ -100,13 +106,41 @@ class Vessel:
         return 'Unknown message'
 
     async def onUpdate(self, _dt, t):
-        for o in self.u.iter('collidable'):
-            if o != self and o.position.get() == self.position.get():
-                cls = o.__class__.__name__
-                if cls == 'Mine':
-                    if o.enabled_time < t:
-                        self.u.remove(o)
-                        await self.damage(20)
+        positions = [self.position.get()]
+        if self.move:
+            positions = list(hypervoxels_line(
+                self.position.get(),
+                list(map(
+                    lambda p, v: p+v,
+                    self.position.get(),
+                    self.move
+                )),
+                self.u.size
+            ))
+            self.move = None
+
+        imove = len(positions)-1
+
+        booms = sorted(
+            (positions.index(o.position.get()), o)
+            for o in self.u.iter('collidable', self)
+            if o.position.get() in positions
+        )
+
+        for i, o in booms:
+            cls = o.__class__.__name__
+            if cls == 'Mine':
+                if o.enabled_time < t:
+                    self.u.remove(o)
+                    await self.damage(20)
+                    imove = i
+                    break
+            elif cls == 'Asteroid':
+                await self.damage(1_000_000)
+                imove = i
+                break
+
+        self.position = Vector(self.u, positions[imove])
 
     def __str__(self):
         stats = ' '.join(map(lambda v, k: f'{k}:{v}', self.stats, 'HASD'))
