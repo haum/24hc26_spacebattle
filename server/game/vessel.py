@@ -32,7 +32,7 @@ class Vessel:
 
         self.send = no_send
         self.position = Vector(self.u, position)
-        self.u.add(self, ['vessel', 'collidable'])
+        self.u.add(self, ['vessel', 'collidable', 'update'])
 
     async def destroy(self):
         await self.send('Vessel destroyed')
@@ -98,6 +98,15 @@ class Vessel:
 
     async def onUnknownMsg(self, data):
         return 'Unknown message'
+
+    async def onUpdate(self, _dt, t):
+        for o in self.u.iter('collidable'):
+            if o != self and o.position.get() == self.position.get():
+                cls = o.__class__.__name__
+                if cls == 'Mine':
+                    if o.enabled_time < t:
+                        self.u.remove(o)
+                        await self.damage(20)
 
     def __str__(self):
         stats = ' '.join(map(lambda v, k: f'{k}:{v}', self.stats, 'HASD'))
