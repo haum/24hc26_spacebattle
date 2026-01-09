@@ -32,10 +32,11 @@ class Universe:
             if o in self.objects:
                 self.objects.remove(o)
 
-    def iter(self, group):
+    def iter(self, group, exclude=None):
         if group in self.refs:
             for o in weakref.WeakSet(self.refs[group]):
-                yield o
+                if o != exclude:
+                    yield o
 
     def clean(self):
         for o in list(self.objects):
