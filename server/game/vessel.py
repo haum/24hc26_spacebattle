@@ -1,6 +1,7 @@
 import functools
 
 from .vector import Vector
+from .torpedo import Torpedo
 
 HP_LUT = [1, 21, 41, 61, 81, 101, 121, 146, 171, 196]
 
@@ -72,6 +73,13 @@ class Vessel:
                 'type': 'start_battle',
             })
         return msgs
+
+    @playing_only
+    async def onMsg_fire_torpedo(self, data):
+        Torpedo(
+            self.u, self.position.get(), data['direction'],
+            self.u.t+5, self
+        )
 
     @playing_only
     async def onMsg_autodestruction(self, data):
