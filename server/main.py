@@ -21,6 +21,9 @@ except ModuleNotFoundError:
 
 game = None
 http_runner = None
+app_key_g = web.AppKey("game", Game)
+app_key_w = web.AppKey("websockets", weakref.WeakSet)
+app_key_c = web.AppKey("console", asyncio.Task)
 
 
 async def index(rq):
@@ -87,9 +90,9 @@ async def mainws(rq):
     ws = web.WebSocketResponse()
     await ws.prepare(rq)
 
-    rq.app['websockets'].add(ws)
+    rq.app[app_key_w].add(ws)
     try:
-        ws.msgobj = weakref.ref(rq.app['game'])
+        ws.msgobj = weakref.ref(rq.app[app_key_g])
         await ws.send_json({'type': 'hello'})
         async for msg in ws:
             if msg.type == aiohttp.WSMsgType.TEXT:
@@ -116,7 +119,7 @@ async def mainws(rq):
             elif msg.type == aiohttp.WSMsgType.ERROR:
                 print(f'ws connection closed with exception: {ws.exception()}')
     finally:
-        rq.app['websockets'].discard(ws)
+        rq.app[app_key_w].discard(ws)
         if ws.msgobj():
             if hasattr(ws.msgobj(), 'onDisconnect'):
                 await ws.msgobj().onDisconnect()
@@ -138,11 +141,11 @@ async def console():
 
 async def on_startup(app):
     if not IPython:
-        app['console'] = asyncio.create_task(console())
+        app[app_key_c] = asyncio.create_task(console())
 
 
 async def on_shutdown(app):
-    for ws in set(app['websockets']):
+    for ws in set(app[app_key_w]):
         await ws.close(
             code=aiohttp.WSCloseCode.GOING_AWAY,
             message='Server shutdown'
@@ -152,8 +155,8 @@ async def on_shutdown(app):
 async def start_server():
     app = web.Application()
 
-    app['game'] = Game()
-    app['websockets'] = weakref.WeakSet()
+    app[app_key_g] = Game()
+    app[app_key_w] = weakref.WeakSet()
 
     app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
@@ -172,7 +175,7 @@ async def start_server():
             app.router.add_route('GET', f'/{d}', static_file(d))
 
     global game
-    game = app['game']
+    game = app[app_key_g]
 
     global http_runner
     http_runner = web.AppRunner(app)
