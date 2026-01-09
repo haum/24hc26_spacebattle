@@ -63,6 +63,19 @@ class Game:
             if self.vessels.get(k).hname[0] == team:
                 await self.vessels.get(k).destroy()
 
+    def get_universe(self, name):
+        m = list(u for u in self.universes if u.name == name)
+        if m:
+            return m[0]
+        if self.lobby.name == name or name == '':
+            return self.lobby
+        try:
+            return list(self.universes)[int(name)]
+        except IndexError:
+            return None
+        except ValueError:
+            return None
+
     def new_universe(self, sz):
         if self.lobby and self.lobby.len('vessel') > 0:
             self.universes.add(self.lobby)
@@ -131,15 +144,10 @@ class Game:
 
     @admin_only
     async def onMsg_rq_world_report(self, data):
-        m = list(u for u in self.universes if u.name == data.get('universe'))
-        if not m and self.lobby.name == data.get('universe'):
-            m = [self.lobby]
-        if not m and data.get('universe') == '':
-            m = [self.lobby]
-        if not m:
-            return 'Unknown universe'
-        o = Observer(m[0])
-        return weakref.ref(o)
+        if u := self.get_universe(data.get('universe')):
+            o = Observer(u)
+            return weakref.ref(o)
+        return 'Unknown universe'
 
     @admin_only
     async def onMsg_config_universe(self, data):
