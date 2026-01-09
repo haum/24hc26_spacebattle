@@ -1,10 +1,22 @@
 import jsonschema
 import itertools
 
-from .admin import MSG_RQ_WORLD_REPORT, MSG_CONFIG_UNIVERSE
-from .game import MSG_START, MSG_CONNECT
-from .vessels import MSG_FIRE_TORPEDO, MSG_DROP_MINE, MSG_AUTODESTRUCTION
-from .misc import MSG_PING
+from .admin import (
+    MSG_RQ_WORLD_REPORT,
+    MSG_CONFIG_UNIVERSE,
+)
+from .game import (
+    MSG_START,
+    MSG_CONNECT,
+)
+from .vessels import (
+    MSG_FIRE_TORPEDO,
+    MSG_DROP_MINE,
+    MSG_AUTODESTRUCTION,
+)
+from .misc import (
+    MSG_PING,
+)
 
 MAX_RESOURCES = 30
 
