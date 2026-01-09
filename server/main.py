@@ -200,6 +200,12 @@ async def main():
             'g': type('', (), {'__repr__': lambda _: str(game)})(),
         }
 
+        import importlib
+        module = importlib.import_module('game.embed_context')
+        for attr in dir(module):
+            if not attr.startswith('_'):
+                embed_namespace[attr] = getattr(module, attr)
+
         from traitlets.config import Config
         c = Config()
         c.InteractiveShell.autoawait = True
