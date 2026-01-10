@@ -4,5 +4,5 @@ from .mine import Mine
 from .observer import Observer
 from .torpedo import Torpedo
 from .universe import Universe
-from .vector import Vector
+from .vector import vector
 from .vessel import Vessel

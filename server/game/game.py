@@ -20,7 +20,7 @@ def random_position(u):
     for _ in range(20):
         p = [random.randint(0, b-1) for b in u.size]
         if all(
-            c.position.get() != p
+            c.position != p
             for c in u.iter('collidable')
         ):
             return p

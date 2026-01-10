@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 def hypervoxels_line(p0, p1, u=None):
     p0 = list(p0)
     p1 = list(p1)
@@ -29,32 +31,31 @@ def hypervoxels_line(p0, p1, u=None):
                 errors[i] += delta[axis]
         p[axis] += step[axis]
 
+def vector_autodim(v, u, modulo=True):
+    p = (v + [0] * (len(u) - len(v)))[:len(u)]
+    if modulo:
+        p = vector_mod(p, u)
+    return p
 
-class Vector:
-    def __init__(self, u, pos):
-        self.u = u
-        if isinstance(pos, int):
-            pos = [0]*pos
-        self.pos = pos
+def vector_mod(v, u):
+    return list(map(lambda a, b: a%b, v, u))
 
-    def add(self, dp, modulo=True):
-        self.pos = list(map(
-            lambda x, y, u: (x + y) % u if modulo else x+y,
-            self.pos,
-            dp + [0] * len(self.u.size),
-            self.u.size
-        ))
+def vector_add(v1, v2):
+    if isinstance(v2, list):
+        return list(map(lambda a, b: a+b, v1, v2))
+    return [i+v2 for i in v1]
 
-    def get(self, integer=True):
-        if integer:
-            return list(map(
-                lambda x, u: round(x) % u,
-                self.pos,
-                self.u.size
-            ))
-        else:
-            return self.pos
+def vector_mul(v, k):
+    return [i*k for i in v]
 
-    def __str__(self):
-        p = ', '.join(map(lambda x: f'{x:.1f}', self.pos))
-        return f'Vector({p})'
+def vector_str(v):
+    p = ', '.join(map(lambda x: f'{x:.1f}', v))
+    return f'[{p}]'
+
+vector = SimpleNamespace(
+    autodim=vector_autodim,
+    mod=vector_mod,
+    add=vector_add,
+    mul=vector_mul,
+    str=vector_str,
+)

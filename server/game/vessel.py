@@ -1,6 +1,6 @@
 import functools
 
-from .vector import Vector, hypervoxels_line
+from .vector import vector, hypervoxels_line
 from .torpedo import Torpedo
 from .mine import Mine
 
@@ -32,7 +32,7 @@ class Vessel:
         self.move = None
 
         self.send = no_send
-        self.position = Vector(self.u, position)
+        self.position = vector.autodim(position, self.u.size)
         self.u.add(self, ['vessel', 'collidable', 'update'])
 
     async def destroy(self):
@@ -84,14 +84,14 @@ class Vessel:
     @playing_only
     async def onMsg_fire_torpedo(self, data):
         Torpedo(
-            self.u, self.position.get(), data['direction'],
+            self.u, self.position, data['direction'],
             self.u.t+5, self
         )
 
     @playing_only
     async def onMsg_drop_mine(self, data):
         Mine(
-            self.u, self.position.get(),
+            self.u, self.position,
             self.u.t + max(0.1, data['delay']), self
         )
 
@@ -106,13 +106,13 @@ class Vessel:
         return 'Unknown message'
 
     async def onUpdate(self, _dt, t):
-        positions = [self.position.get()]
+        positions = [self.position]
         if self.move:
             positions = list(hypervoxels_line(
-                self.position.get(),
+                self.position,
                 list(map(
                     lambda p, v: p+v,
-                    self.position.get(),
+                    self.position,
                     self.move
                 )),
                 self.u.size
@@ -122,9 +122,9 @@ class Vessel:
         imove = len(positions)-1
 
         booms = sorted(
-            (positions.index(o.position.get()), o)
+            (positions.index(o.position), o)
             for o in self.u.iter('collidable', self)
-            if o.position.get() in positions
+            if o.position in positions
         )
 
         for i, o in booms:
@@ -140,12 +140,12 @@ class Vessel:
                 imove = i
                 break
 
-        self.position = Vector(self.u, positions[imove])
+        self.position = vector.mod(positions[imove], self.u.size)
 
     def __str__(self):
         stats = ' '.join(map(lambda v, k: f'{k}:{v}', self.stats, 'HASD'))
         return ''.join([
-            f'Vessel(p={self.position}, hp={self.hp}, ',
+            f'Vessel(p={vector.str(self.position)}, hp={self.hp}, ',
             f'stats=({stats}), ',
             f'hname={self.hname})',
         ])

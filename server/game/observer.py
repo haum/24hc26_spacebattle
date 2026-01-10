@@ -24,24 +24,24 @@ class Observer:
                     'type': 'world_report',
                     'size': self.u.size,
                     'asteroids': [
-                        a.position.get()
+                        a.position
                         for a in self.u.iter('asteroid')
                     ],
                     'vessels': [
-                        (v.name(), v.position.get())
+                        (v.name(), v.position)
                         for v in self.u.iter('vessel')
                     ],
                     'torpedos': [
                         (
                             t.emitter().name() if t.emitter() else '',
-                            t.position.get()
+                            t.position
                         )
                         for t in self.u.iter('torpedo')
                     ],
                     'mines': [
                         (
                             m.emitter().name() if m.emitter() else '',
-                            m.position.get()
+                            m.position
                         )
                         for m in self.u.iter('mine')
                     ],
