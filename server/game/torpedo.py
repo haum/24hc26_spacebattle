@@ -1,6 +1,6 @@
 import weakref
 
-from .vector import vector
+from .vector import vector, hypervoxels_line
 
 
 class Torpedo:
@@ -10,6 +10,7 @@ class Torpedo:
         self.position = position
         self.speed = speed
         self.die = die_time
+        self.activated = False
         self.u.add(self, ['torpedo', 'collidable', 'update'])
 
     async def onUpdate(self, _dt, t):
@@ -17,15 +18,38 @@ class Torpedo:
             self.u.remove(self)
             return
 
-        self.position = vector.add(self.position, self.speed)
-        for o in self.u.iter('collidable'):
-            if o != self and o.position == self.position:
-                self.u.remove(self)
-                cls = o.__class__.__name__
-                if cls == 'Vessel':
+        if not self.activated:
+            if self.emitter():
+                if self.position != self.emitter().position:
+                    self.activated = True
+            else:
+                self.activated = True
+
+        positions = list(hypervoxels_line(
+            self.position,
+            vector.add(self.position, self.speed),
+            self.u.size
+        ))
+
+        booms = sorted(
+            (positions.index(o.position), o)
+            for o in self.u.iter('collidable', self)
+            if o.position in positions
+        )
+
+        for i, o in booms:
+            cls = o.__class__.__name__
+            if cls == 'Vessel':
+                if o != self.emitter() or self.activated:
+                    self.u.remove(self)
                     await o.damage(20)
-                elif cls == 'Mine':
-                    self.u.remove(o)
+                    break
+            elif cls == 'Mine':
+                self.u.remove(self)
+                self.u.remove(o)
+                break
+
+        self.position = positions[-1]
 
     def __str__(self):
         return ''.join((
