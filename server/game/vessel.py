@@ -32,7 +32,7 @@ class Vessel:
         self.move = None
 
         self.send = no_send
-        self.position = vector.autodim(position, self.u.size)
+        self.position = position
         self.u.add(self, ['vessel', 'collidable', 'update'])
 
     async def destroy(self):
@@ -84,7 +84,8 @@ class Vessel:
     @playing_only
     async def onMsg_fire_torpedo(self, data):
         Torpedo(
-            self.u, self.position, data['direction'],
+            self.u, self.position,
+            vector.autodim(data['direction'], self.u.size, False),
             self.u.t+5, self
         )
 
@@ -145,7 +146,7 @@ class Vessel:
     def __str__(self):
         stats = ' '.join(map(lambda v, k: f'{k}:{v}', self.stats, 'HASD'))
         return ''.join([
-            f'Vessel(p={vector.str(self.position)}, hp={self.hp}, ',
+            f'Vessel(p={self.position}, hp={self.hp}, ',
             f'stats=({stats}), ',
             f'hname={self.hname})',
         ])

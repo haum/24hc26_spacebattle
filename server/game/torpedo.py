@@ -7,8 +7,8 @@ class Torpedo:
     def __init__(self, universe, position, speed, die_time, emitter=None):
         self.u = universe
         self.emitter = weakref.ref(emitter) if emitter else lambda: None
-        self.position = vector.autodim(position, self.u.size)
-        self.speed = vector.autodim(speed, self.u.size, False)
+        self.position = position
+        self.speed = speed
         self.die = die_time
         self.u.add(self, ['torpedo', 'collidable', 'update'])
 
@@ -29,7 +29,7 @@ class Torpedo:
 
     def __str__(self):
         return ''.join((
-            f'Torpedo(p={vector.str(self.position)}, ',
+            f'Torpedo(p={self.position}, ',
             f's={vector.str(self.speed)}, ',
             f'l={self.die-self.u.t:.1f})'
         ))
