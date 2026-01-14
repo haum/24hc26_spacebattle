@@ -6,3 +6,7 @@ from .torpedo import Torpedo
 from .universe import Universe
 from .vector import vector
 from .vessel import Vessel
+
+def run_tests():
+    import pytest
+    return pytest.main(["-v", "tests"])
