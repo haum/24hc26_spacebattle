@@ -44,6 +44,9 @@ class Torpedo:
                     self.u.remove(self)
                     await o.damage(20)
                     break
+            elif cls == 'Asteroid':
+                self.u.remove(self)
+                break
             elif cls == 'Mine':
                 self.u.remove(self)
                 self.u.remove(o)
