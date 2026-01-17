@@ -1,6 +1,7 @@
 import pytest
 
 from game.asteroid import Asteroid
+from game.mine import Mine
 from game.torpedo import Torpedo
 from game.universe import Universe
 from game.vessel import Vessel
@@ -98,3 +99,21 @@ async def test_topedo_attacking_vessel_behind_another_vessel():
 
     assert v1.hp == hp2
     assert v2.hp < hp2
+
+
+@pytest.mark.asyncio
+async def test_topedo_attacking_vessel_behind_mine():
+    u = Universe('test', [50, 50])
+    v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
+    Torpedo(u, [20, 10], [-5, 0], 1)
+    Mine(u, [40, 10], 0)
+
+    hp = v.hp
+
+    await run_universe(u, 3)
+
+    assert u.len('mine') == 0
+    assert u.len('torpedo') == 0
+    assert u.len('vessel') == 1
+
+    assert v.hp == hp
