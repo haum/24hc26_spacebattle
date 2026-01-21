@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serveur de Jeu HAUM - 24h du Code 2026</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 107, 107, 0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .logos {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo-box {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px 40px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .logo-box:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 107, 107, 0.5);
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.2);
+        }
+
+        .logo-text {
+            font-size: 2.5em;
+            font-weight: bold;
+            letter-spacing: 3px;
+        }
+
+        .haum-logo {
+            color: #ff6b6b;
+            text-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+        }
+
+        .code-logo {
+            color: #4ecdc4;
+            text-shadow: 0 0 20px rgba(78, 205, 196, 0.5);
+        }
+
+        .separator {
+            font-size: 2em;
+            color: #fff;
+            opacity: 0.5;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 15px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+            z-index: 1;
+        }
+
+        .subtitle {
+            font-size: 1.3em;
+            color: #a8dadc;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .date {
+            font-size: 1.1em;
+            color: #ffeb3b;
+            font-weight: bold;
+            position: relative;
+            z-index: 1;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 107, 107, 0.3);
+        }
+
+        .card h2 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #ff6b6b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon {
+            font-size: 1.2em;
+        }
+
+        .card p, .card ul {
+            line-height: 1.8;
+            color: #e0e0e0;
+            margin-bottom: 15px;
+        }
+
+        .card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .card li {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card li:last-child {
+            border-bottom: none;
+        }
+
+        .card li::before {
+            content: '▸';
+            color: #4ecdc4;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .server-info {
+            background: linear-gradient(135deg, #1e3a5f 0%, #16213e 100%);
+            border: 2px solid #4ecdc4;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 30px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .server-info h3 {
+            color: #4ecdc4;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .server-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px dashed rgba(78, 205, 196, 0.3);
+        }
+
+        .server-detail:last-child {
+            border-bottom: none;
+        }
+
+        .server-label {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        .server-value {
+            color: #a8dadc;
+            font-weight: bold;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #a8dadc;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 50px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: #4ecdc4;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: #ff6b6b;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .logo-text {
+                font-size: 1.8em;
+            }
+
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logos">
+                <div class="logo-box floating">
+                    <img src="https://haum.org/theme/images/head.png" alt="HAUM Logo" style="height: 80px; width: auto;">
+                </div>
+                <div class="separator">×</div>
+                <div class="logo-box floating" style="animation-delay: 0.5s;">
+                    <img src="https://les24hducode.fr/images/logo-blanc-1.png" alt="24h du Code Logo" style="height: 80px; width: auto;">
+                </div>
+            </div>
+            <h1>Serveur de Jeu</h1>
+            <p class="subtitle">Défi proposé par le Hackerspace AU Mans</p>
+            <p class="date">📅 21-22 Mars 2026 | 📍 CCI Le Mans Sarthe</p>
+        </header>
+
+        <div class="main-content">
+            <div class="card">
+                <h2><span class="icon">🎯</span> Le Défi HAUM</h2>
+                <p>Le Hackerspace AU Mans vous propose un défi de programmation passionnant pour cette édition 2026 des 24h du Code !</p>
+                <p>Rejoignez des dizaines d'équipes étudiantes et professionnelles pour relever notre challenge technique et démontrer vos compétences en programmation, algorithmique et résolution de problèmes.</p>
+                <p><strong>Philosophie :</strong> Dans l'esprit Do-It-Yourself du HAUM, ce défi mettra à l'épreuve votre créativité et votre capacité à bidouiller des solutions innovantes.</p>
+            </div>
+        </div>
+
+        <div class="server-info">
+            <h3>🖥️ Informations Techniques du Serveur</h3>
+            <div class="server-detail">
+                <span class="server-label">Adresse :</span>
+                <span class="server-value">24hc26.haum.org</span>
+            </div>
+            <div class="server-detail">
+                <span class="server-label">Protocole :</span>
+                <span class="server-value">HTTPS + WebSocket</span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="card">
+                <h2><span class="icon">🛠️</span> À Propos du HAUM</h2>
+                <p>Le <strong>Hackerspace AU Mans</strong> est une association sarthoise dédiée à la philosophie du "Do-It-Yourself".</p>
+                <p>Ouvert à tous, le HAUM est un lieu d'apprentissage, d'expérimentation et d'échange où les passionnés de technologie se retrouvent pour bidouiller, créer et innover.</p>
+                <p><strong>Localisation :</strong> 57 Boulevard Demorieux, 72100 Le Mans</p>
+            </div>
+
+            <div class="card">
+                <h2><span class="icon">💻</span> Les 24h du Code</h2>
+                <p>Événement incontournable depuis 2012, les 24h du Code rassemblent chaque année des passionnés de programmation dans un marathon de code intense et convivial.</p>
+                <p><strong>Édition 2026 :</strong> 14ème édition organisée par l'ENSIM et la CCI Le Mans Sarthe, en partenariat avec des entreprises majeures comme STMicroelectronics, Sopra Steria, Covéa et bien sûr le HAUM.</p>
+                <p><strong>Format :</strong> Coding party et hackathon sur 24 heures avec repas, animations et récompenses.</p>
+            </div>
+        </div>
+
+        <footer>
+            <p><strong>Un défi proposé par le HAUM pour les 24h du Code 2026</strong></p>
+            <div class="footer-links">
+                <a href="https://haum.org/" target="_blank">🔗 Site du HAUM</a>
+                <a href="https://les24hducode.fr/" target="_blank">🔗 Site des 24h du Code</a>
+                <a href="https://github.com/haum" target="_blank">💻 GitHub HAUM</a>
+                <a href="mailto:contact@haum.org">📧 Contact HAUM</a>
+            </div>
+            <p style="margin-top: 30px; opacity: 0.7;">🄯 2026 - Hackerspace AU Mans - Tous droits réservés</p>
+        </footer>
+    </div>
+</body>
+</html>

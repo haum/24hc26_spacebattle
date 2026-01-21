@@ -27,7 +27,7 @@ app_key_c = web.AppKey("console", asyncio.Task)
 
 
 async def index(rq):
-    return web.Response(text='24HC26 game server')
+    return web.FileResponse('./index.html')
 
 
 def redirect301(url):
