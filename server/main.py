@@ -8,7 +8,9 @@ import json
 import os
 import weakref
 import sys
+import socket
 
+from datetime import datetime, date
 from messages import validate_msg
 from game.game import Game
 
@@ -25,7 +27,7 @@ app_key_g = web.AppKey("game", Game)
 app_key_w = web.AppKey("websockets", weakref.WeakSet)
 app_key_c = web.AppKey("console", asyncio.Task)
 
-hostname = os.environ.get('HOSTNAME')
+hostname = socket.gethostname()
 
 async def index(rq):
     if hostname == "24hc26" and date(2026,3,21) <= date.today() <= date(2026,3,22):
