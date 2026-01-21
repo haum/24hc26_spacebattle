@@ -25,9 +25,15 @@ app_key_g = web.AppKey("game", Game)
 app_key_w = web.AppKey("websockets", weakref.WeakSet)
 app_key_c = web.AppKey("console", asyncio.Task)
 
+hostname = os.environ.get('HOSTNAME')
 
 async def index(rq):
-    return web.FileResponse('./index.html')
+    if hostname == "24hc26" and date(2026,3,21) <= date.today() <= date(2026,3,22):
+        return web.FileResponse('./index.html')
+    elif hostname != "24hc26":
+        return web.FileResponse('./index.html')
+    else:
+        return web.Response(text='')
 
 
 def redirect301(url):
