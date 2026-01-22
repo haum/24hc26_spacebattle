@@ -12,15 +12,12 @@ def hypervoxels_line(p0, p1, u=None):
     errors = [delta[axis] // 2 for _ in range(dim)]
     p = p0[:]
 
-    while True:
+    for _ in range(int(delta[axis])+1):
         yield list(map(
             lambda x, u: round(x) % u,
             p,
             u
-        )) if u else p[:]
-
-        if p == p1:
-            break
+        )) if u else vector_round(p)
 
         for i in range(dim):
             if i == axis:
@@ -47,6 +44,9 @@ def vector_add(v1, v2):
 
 def vector_mul(v, k):
     return [i*k for i in v]
+
+def vector_round(v):
+    return [round(i) for i in v]
 
 def vector_str(v):
     p = ', '.join(map(lambda x: f'{x:.1f}', v))
