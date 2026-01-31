@@ -6,14 +6,7 @@ from game.torpedo import Torpedo
 from game.universe import Universe
 from game.vessel import Vessel
 
-
-async def run_universe(u, duration):
-    for v in u.iter('vessel'):
-        await v.start()
-    for t in range(duration*10):
-        u.t = t/10
-        for o in u.iter('update'):
-            await o.onUpdate(0.1, u.t)
+from .utils import run_universe
 
 
 @pytest.mark.asyncio
