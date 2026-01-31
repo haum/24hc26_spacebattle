@@ -3,9 +3,26 @@ import functools
 from .vector import vector, hypervoxels_line
 from .torpedo import Torpedo
 from .mine import Mine
+from messages.game import MAX_STAT
+from enum import IntEnum
 
 HP_LUT = [1, 21, 41, 61, 81, 101, 121, 146, 171, 196]
 
+class STATS(IntEnum):
+    H = 0
+    A = 1
+    S = 2
+    D = 3
+
+class ENERGY:
+    torpedo = 10
+    mine = 10
+    iem = 30
+    laser = 50
+    move = 5
+    radar = 1
+    regen = 10
+    max = 100
 
 def playing_only(f):
     @functools.wraps(f)
@@ -28,7 +45,8 @@ class Vessel:
         self.hname = hname
         self.stats = stats
 
-        self.hp = HP_LUT[stats[0]]
+        self.hp = HP_LUT[self.stats[STATS.H]]
+        self.energy = ENERGY.max
         self.move = None
 
         self.send = no_send
@@ -55,6 +73,13 @@ class Vessel:
         if self.hp <= 0:
             await self.destroy()
 
+    async def spend_energy(self, n):
+        if self.energy < n:
+            await self.send({'type': 'low_energy'})
+            return False
+        self.energy = max(0, self.energy-n)
+        return True
+
     async def start(self):
         self.frozen = False
         await self.send({
@@ -78,23 +103,26 @@ class Vessel:
 
     @playing_only
     async def onMsg_move(self, data):
-        d = data['direction']
-        self.move = d + [0] * (len(self.u.size) - len(d))
+        if await self.spend_energy(self.stats[STATS.S]/MAX_STAT*5):
+            d = data['direction']
+            self.move = d + [0] * (len(self.u.size) - len(d))
 
     @playing_only
     async def onMsg_fire_torpedo(self, data):
-        Torpedo(
-            self.u, self.position,
-            vector.autodim(data['direction'], self.u.size, False),
-            self.u.t+5, self
-        )
+        if await self.spend_energy(ENERGY.torpedo):
+            Torpedo(
+                self.u, self.position,
+                vector.autodim(data['direction'], self.u.size, False),
+                self.u.t+5, self
+            )
 
     @playing_only
     async def onMsg_drop_mine(self, data):
-        Mine(
-            self.u, self.position,
-            self.u.t + max(0.1, data['delay']), self
-        )
+        if await self.spend_energy(ENERGY.mine):
+            Mine(
+                self.u, self.position,
+                self.u.t + max(0.1, data['delay']), self
+            )
 
     @playing_only
     async def onMsg_autodestruction(self, data):
@@ -121,6 +149,8 @@ class Vessel:
             self.move = None
 
         imove = len(positions)-1
+
+        self.energy = min(self.energy+_dt*ENERGY.regen, ENERGY.max)
 
         booms = sorted(
             (positions.index(o.position), o)
