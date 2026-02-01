@@ -58,7 +58,7 @@ class Vessel:
         await self.send('Vessel destroyed')
         await self.set_sender(None)
         self.u.remove(self)
-        Resource(self.u, self.position, HP_LUT[self.stats[STATS.H]])
+        Resource(self.u, self.position, HP_LUT[self.stats[STATS.H]], destroyed_vessel=True)
 
     async def set_sender(self, send):
         await self.send('Disconnected by another pilot')
