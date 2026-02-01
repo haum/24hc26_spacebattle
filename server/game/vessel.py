@@ -3,6 +3,7 @@ import functools
 from .vector import vector, hypervoxels_line
 from .torpedo import Torpedo
 from .mine import Mine
+from .resource import Resource
 from messages.game import MAX_STAT
 from enum import IntEnum
 
@@ -57,6 +58,7 @@ class Vessel:
         await self.send('Vessel destroyed')
         await self.set_sender(None)
         self.u.remove(self)
+        Resource(self.u, self.position, HP_LUT[self.stats[STATS.H]])
 
     async def set_sender(self, send):
         await self.send('Disconnected by another pilot')
