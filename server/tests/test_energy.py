@@ -1,8 +1,5 @@
 import pytest
 
-from game.asteroid import Asteroid
-from game.mine import Mine
-from game.torpedo import Torpedo
 from game.universe import Universe
 from game.vessel import Vessel
 
