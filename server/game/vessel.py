@@ -154,11 +154,10 @@ class Vessel:
 
         self.energy = min(self.energy+_dt*ENERGY.regen, ENERGY.max)
 
-        farmables = sorted(
+        farmables = (
             (positions.index(o.position), o)
             for o in self.u.iter('farmable', self)
-            if o.position in positions
-        )
+            if o.position in positions)
 
         for i, o in farmables:
             qantity, cont = await o.harvest(_dt)
