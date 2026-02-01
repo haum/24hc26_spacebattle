@@ -110,3 +110,19 @@ async def test_topedo_attacking_vessel_behind_mine():
     assert u.len('vessel') == 1
 
     assert v.hp == hp
+
+@pytest.mark.asyncio
+async def test_vessels_collision():
+    u = Universe('test', [50, 50])
+    v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
+    v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [31, 10])
+
+    hp1 = v1.hp
+    hp2 = v2.hp
+
+    await run_universe(u, 1)
+    await v1.onMsg_move({'direction': [1,0]})
+    await run_universe(u, 3)
+
+    assert v1.hp == hp1 - 15
+    assert v2.hp == hp2 - 15

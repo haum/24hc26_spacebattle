@@ -184,6 +184,11 @@ class Vessel:
                 await self.damage(1_000_000)
                 imove = i
                 break
+            elif cls == 'Vessel' and o != self:
+                await self.damage(15)
+                await o.damage(15)
+                imove = 0
+                break
 
         self.position = vector.mod(positions[imove], self.u.size)
 
