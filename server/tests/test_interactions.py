@@ -10,7 +10,7 @@ from .utils import run_universe, RadarLogger
 
 
 @pytest.mark.asyncio
-async def test_torpedo_vs_asteoid():
+async def test_torpedo_vs_asteroid():
     u = Universe('test', [50, 50])
     Torpedo(u, [10, 10], [-5, 0], 1)
     Asteroid(u, [0, 10])
@@ -26,7 +26,7 @@ async def test_torpedo_vs_asteoid():
 
 
 @pytest.mark.asyncio
-async def test_topedo_attacking_vessel_behind_asteroid():
+async def test_torpedo_attacking_vessel_behind_asteroid():
     u = Universe('test', [50, 50])
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
     Torpedo(u, [20, 10], [-5, 0], 1)
@@ -48,7 +48,7 @@ async def test_topedo_attacking_vessel_behind_asteroid():
 
 
 @pytest.mark.asyncio
-async def test_topedo_attacking_vessel_behind_asteroid_modulo1():
+async def test_torpedo_attacking_vessel_behind_asteroid_modulo1():
     u = Universe('test', [50, 50])
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [40, 10])
     Torpedo(u, [20, 10], [-5, 0], 1)
@@ -70,7 +70,7 @@ async def test_topedo_attacking_vessel_behind_asteroid_modulo1():
 
 
 @pytest.mark.asyncio
-async def test_topedo_attacking_vessel_behind_asteroid_modulo2():
+async def test_torpedo_attacking_vessel_behind_asteroid_modulo2():
     u = Universe('test', [50, 50])
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
     Torpedo(u, [20, 10], [-5, 0], 1)
@@ -92,7 +92,7 @@ async def test_topedo_attacking_vessel_behind_asteroid_modulo2():
 
 
 @pytest.mark.asyncio
-async def test_topedo_attacking_vessel_behind_another_vessel():
+async def test_torpedo_attacking_vessel_behind_another_vessel():
     u = Universe('test', [50, 50])
     v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
     v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [40, 10])
@@ -115,7 +115,7 @@ async def test_topedo_attacking_vessel_behind_another_vessel():
 
 
 @pytest.mark.asyncio
-async def test_topedo_attacking_vessel_behind_mine():
+async def test_torpedo_attacking_vessel_behind_mine():
     u = Universe('test', [50, 50])
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
     Torpedo(u, [20, 10], [-5, 0], 1)
