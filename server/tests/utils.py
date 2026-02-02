@@ -19,3 +19,12 @@ class MessageLogger:
 
     def __getitem__(self, index):
         return self.messages[index]
+
+
+class RadarLogger(MessageLogger):
+    def __init__(self, u):
+        super().__init__()
+        u.add(self, ['radar'])
+
+    async def onPassiveScan(self, data):
+        await self.log(data)
