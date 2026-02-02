@@ -4,19 +4,20 @@ from game.resource import Resource
 from game.universe import Universe
 from game.vessel import Vessel, HP_LUT
 
-from .utils import MessageLogger, run_universe
+from .utils import UniverseRunner, MessageLogger
 
 
 @pytest.mark.asyncio
 async def test_harvest_regular():
     logger = MessageLogger()
     u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
     r = Resource(u, [0, 10], 40)
     v.send = logger.log
     v.energy = 0
 
-    await run_universe(u, 1)
+    await runner.run_for(1)
 
     assert r.quantity == 20
     assert v.energy == 20+10 # harvested 20 + 10 regen
@@ -26,12 +27,13 @@ async def test_harvest_regular():
 async def test_harvest_finish():
     logger = MessageLogger()
     u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
     r = Resource(u, [0, 10], 20)
     v.send = logger.log
     v.energy = 0
 
-    await run_universe(u, 1)
+    await runner.run_for(1)
 
     assert r.quantity == 0
     assert v.energy == 20+10 # harvested 20 + 10 regen
@@ -43,12 +45,13 @@ async def test_harvest_finish():
 async def test_harvest_partial():
     logger = MessageLogger()
     u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
     r = Resource(u, [0, 10], 9)
     v.send = logger.log
     v.energy = 0
 
-    await run_universe(u, 1)
+    await runner.run_for(1)
 
     assert r.quantity == 0
     assert v.energy == 9+10 # harvested 9 + 10 regen

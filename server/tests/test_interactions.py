@@ -6,17 +6,18 @@ from game.torpedo import Torpedo
 from game.universe import Universe
 from game.vessel import Vessel
 
-from .utils import run_universe, RadarLogger
+from .utils import UniverseRunner, RadarLogger
 
 
 @pytest.mark.asyncio
 async def test_torpedo_vs_asteroid():
     u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
     Torpedo(u, [10, 10], [-5, 0], 1)
     Asteroid(u, [0, 10])
     radar = RadarLogger(u)
 
-    await run_universe(u, 3)
+    await runner.run_for(3)
 
     assert u.len('asteroid') == 1
     assert u.len('torpedo') == 0
@@ -28,6 +29,7 @@ async def test_torpedo_vs_asteroid():
 @pytest.mark.asyncio
 async def test_torpedo_attacking_vessel_behind_asteroid():
     u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
     Torpedo(u, [20, 10], [-5, 0], 1)
     Asteroid(u, [10, 10])
@@ -35,7 +37,7 @@ async def test_torpedo_attacking_vessel_behind_asteroid():
 
     hp = v.hp
 
-    await run_universe(u, 3)
+    await runner.run_for(3)
 
     assert u.len('asteroid') == 1
     assert u.len('torpedo') == 0
@@ -50,6 +52,7 @@ async def test_torpedo_attacking_vessel_behind_asteroid():
 @pytest.mark.asyncio
 async def test_torpedo_attacking_vessel_behind_asteroid_modulo1():
     u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [40, 10])
     Torpedo(u, [20, 10], [-5, 0], 1)
     Asteroid(u, [10, 10])
@@ -57,7 +60,7 @@ async def test_torpedo_attacking_vessel_behind_asteroid_modulo1():
 
     hp = v.hp
 
-    await run_universe(u, 3)
+    await runner.run_for(3)
 
     assert u.len('asteroid') == 1
     assert u.len('torpedo') == 0
@@ -72,6 +75,7 @@ async def test_torpedo_attacking_vessel_behind_asteroid_modulo1():
 @pytest.mark.asyncio
 async def test_torpedo_attacking_vessel_behind_asteroid_modulo2():
     u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
     Torpedo(u, [20, 10], [-5, 0], 1)
     Asteroid(u, [40, 10])
@@ -79,7 +83,7 @@ async def test_torpedo_attacking_vessel_behind_asteroid_modulo2():
 
     hp = v.hp
 
-    await run_universe(u, 3)
+    await runner.run_for(3)
 
     assert u.len('asteroid') == 1
     assert u.len('torpedo') == 0
@@ -94,6 +98,7 @@ async def test_torpedo_attacking_vessel_behind_asteroid_modulo2():
 @pytest.mark.asyncio
 async def test_torpedo_attacking_vessel_behind_another_vessel():
     u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
     v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
     v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [40, 10])
     Torpedo(u, [20, 10], [-5, 0], 1)
@@ -102,7 +107,7 @@ async def test_torpedo_attacking_vessel_behind_another_vessel():
     hp1 = v1.hp
     hp2 = v2.hp
 
-    await run_universe(u, 3)
+    await runner.run_for(3)
 
     assert u.len('torpedo') == 0
     assert u.len('vessel') == 2
@@ -117,6 +122,7 @@ async def test_torpedo_attacking_vessel_behind_another_vessel():
 @pytest.mark.asyncio
 async def test_torpedo_attacking_vessel_behind_mine():
     u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
     Torpedo(u, [20, 10], [-5, 0], 1)
     Mine(u, [40, 10], 0)
@@ -124,7 +130,7 @@ async def test_torpedo_attacking_vessel_behind_mine():
 
     hp = v.hp
 
-    await run_universe(u, 3)
+    await runner.run_for(3)
 
     assert u.len('mine') == 0
     assert u.len('torpedo') == 0
@@ -139,6 +145,7 @@ async def test_torpedo_attacking_vessel_behind_mine():
 @pytest.mark.asyncio
 async def test_vessels_collision():
     u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
     v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
     v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [31, 10])
     radar = RadarLogger(u)
@@ -146,9 +153,9 @@ async def test_vessels_collision():
     hp1 = v1.hp
     hp2 = v2.hp
 
-    await run_universe(u, 1)
+    await runner.run_for(1)
     await v1.onMsg_move({'direction': [1,0]})
-    await run_universe(u, 3)
+    await runner.run_for(3)
 
     assert v1.hp == hp1 - 15
     assert v2.hp == hp2 - 15

@@ -3,17 +3,19 @@ import pytest
 from game.universe import Universe
 from game.vessel import Vessel
 
-from .utils import MessageLogger, run_universe
+from .utils import UniverseRunner, MessageLogger
 
 
 @pytest.mark.asyncio
 async def test_out_of_energy():
     logger = MessageLogger()
     u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
     v.send = logger.log
 
-    await run_universe(u, 1)
+    await runner.run_for(1)
+
     v.energy = 0
     await v.onMsg_move({'direction': [1, 1]})
 

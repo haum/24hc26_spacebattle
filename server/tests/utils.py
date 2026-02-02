@@ -1,10 +1,21 @@
-async def run_universe(u, duration):
-    for v in u.iter('vessel'):
-        await v.start()
-    for t in range(duration*10):
-        u.t = t/10
-        for o in u.iter('update'):
-            await o.onUpdate(0.1, u.t)
+class UniverseRunner:
+    def __init__(self, u):
+        self.started = False
+        self.u = u
+
+    async def start(self):
+        self.started = True
+        for v in self.u.iter('vessel'):
+            await v.start()
+
+    async def run_for(self, duration):
+        if not self.started: await self.start()
+        u = self.u
+        t0 = u.t
+        for t in range(duration*10):
+            u.t = t0 + t/10
+            for o in u.iter('update'):
+                await o.onUpdate(0.1, u.t)
 
 
 class MessageLogger:
