@@ -6,7 +6,7 @@ from game.torpedo import Torpedo
 from game.universe import Universe
 from game.vessel import Vessel
 
-from .utils import run_universe
+from .utils import run_universe, RadarLogger
 
 
 @pytest.mark.asyncio
@@ -14,11 +14,15 @@ async def test_torpedo_vs_asteoid():
     u = Universe('test', [50, 50])
     Torpedo(u, [10, 10], [-5, 0], 1)
     Asteroid(u, [0, 10])
+    radar = RadarLogger(u)
 
     await run_universe(u, 3)
 
     assert u.len('asteroid') == 1
     assert u.len('torpedo') == 0
+
+    assert len(radar) == 1
+    assert radar[0] == { 'type': 'explosion', 'position': [0, 10] }
 
 
 @pytest.mark.asyncio
@@ -27,6 +31,7 @@ async def test_topedo_attacking_vessel_behind_asteroid():
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
     Torpedo(u, [20, 10], [-5, 0], 1)
     Asteroid(u, [10, 10])
+    radar = RadarLogger(u)
 
     hp = v.hp
 
@@ -37,6 +42,9 @@ async def test_topedo_attacking_vessel_behind_asteroid():
     assert u.len('vessel') == 1
 
     assert v.hp == hp
+
+    assert len(radar) == 1
+    assert radar[0] == { 'type': 'explosion', 'position': [10, 10] }
 
 
 @pytest.mark.asyncio
@@ -45,6 +53,7 @@ async def test_topedo_attacking_vessel_behind_asteroid_modulo1():
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [40, 10])
     Torpedo(u, [20, 10], [-5, 0], 1)
     Asteroid(u, [10, 10])
+    radar = RadarLogger(u)
 
     hp = v.hp
 
@@ -55,6 +64,9 @@ async def test_topedo_attacking_vessel_behind_asteroid_modulo1():
     assert u.len('vessel') == 1
 
     assert v.hp == hp
+
+    assert len(radar) == 1
+    assert radar[0] == { 'type': 'explosion', 'position': [10, 10] }
 
 
 @pytest.mark.asyncio
@@ -63,6 +75,7 @@ async def test_topedo_attacking_vessel_behind_asteroid_modulo2():
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
     Torpedo(u, [20, 10], [-5, 0], 1)
     Asteroid(u, [40, 10])
+    radar = RadarLogger(u)
 
     hp = v.hp
 
@@ -74,6 +87,9 @@ async def test_topedo_attacking_vessel_behind_asteroid_modulo2():
 
     assert v.hp == hp
 
+    assert len(radar) == 1
+    assert radar[0] == { 'type': 'explosion', 'position': [40, 10] }
+
 
 @pytest.mark.asyncio
 async def test_topedo_attacking_vessel_behind_another_vessel():
@@ -81,6 +97,7 @@ async def test_topedo_attacking_vessel_behind_another_vessel():
     v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
     v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [40, 10])
     Torpedo(u, [20, 10], [-5, 0], 1)
+    radar = RadarLogger(u)
 
     hp1 = v1.hp
     hp2 = v2.hp
@@ -93,6 +110,9 @@ async def test_topedo_attacking_vessel_behind_another_vessel():
     assert v1.hp == hp2
     assert v2.hp < hp2
 
+    assert len(radar) == 1
+    assert radar[0] == { 'type': 'explosion', 'position': [40, 10] }
+
 
 @pytest.mark.asyncio
 async def test_topedo_attacking_vessel_behind_mine():
@@ -100,6 +120,7 @@ async def test_topedo_attacking_vessel_behind_mine():
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
     Torpedo(u, [20, 10], [-5, 0], 1)
     Mine(u, [40, 10], 0)
+    radar = RadarLogger(u)
 
     hp = v.hp
 
@@ -111,11 +132,16 @@ async def test_topedo_attacking_vessel_behind_mine():
 
     assert v.hp == hp
 
+    assert len(radar) == 1
+    assert radar[0] == { 'type': 'explosion', 'position': [40, 10] }
+
+
 @pytest.mark.asyncio
 async def test_vessels_collision():
     u = Universe('test', [50, 50])
     v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
     v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [31, 10])
+    radar = RadarLogger(u)
 
     hp1 = v1.hp
     hp2 = v2.hp
@@ -126,3 +152,6 @@ async def test_vessels_collision():
 
     assert v1.hp == hp1 - 15
     assert v2.hp == hp2 - 15
+
+    assert len(radar) == 1
+    assert radar[0] == { 'type': 'explosion', 'position': [31, 10]}
