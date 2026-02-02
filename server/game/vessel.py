@@ -3,6 +3,7 @@ import functools
 from .vector import vector, hypervoxels_line
 from .torpedo import Torpedo
 from .mine import Mine
+from .radar import emit_explosion
 from .resource import Resource
 from messages.game import MAX_STAT
 from enum import IntEnum
@@ -175,15 +176,18 @@ class Vessel:
             cls = o.__class__.__name__
             if cls == 'Mine':
                 if o.enabled_time < t:
+                    await emit_explosion(self.u, o)
                     self.u.remove(o)
                     await self.damage(20)
                     imove = i
                     break
             elif cls == 'Asteroid':
+                await emit_explosion(self.u, o)
                 await self.damage(1_000_000)
                 imove = i
                 break
             elif cls == 'Vessel' and o != self:
+                await emit_explosion(self.u, o)
                 await self.damage(15)
                 await o.damage(15)
                 imove = 0
