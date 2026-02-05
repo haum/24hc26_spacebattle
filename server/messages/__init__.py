@@ -13,6 +13,7 @@ from .vessels import (
     MSG_MOVE,
     MSG_FIRE_TORPEDO,
     MSG_DROP_MINE,
+    MSG_SCAN_RADAR,
     MSG_AUTODESTRUCTION,
 )
 from .misc import (
@@ -32,6 +33,7 @@ validators = dict(map(
         ('move', MSG_MOVE),
         ('fire_torpedo', MSG_FIRE_TORPEDO),
         ('drop_mine', MSG_DROP_MINE),
+        ('scan_radar', MSG_SCAN_RADAR),
         ('autodestruction', MSG_AUTODESTRUCTION),
         ('ping', MSG_PING),
         ('rq_world_report', MSG_RQ_WORLD_REPORT),

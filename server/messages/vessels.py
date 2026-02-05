@@ -47,6 +47,16 @@ MSG_DROP_MINE = {
     "additionalProperties": False
 }
 
+MSG_SCAN_RADAR = {
+    "properties": {
+        "type": {
+            "const": "scan_radar"
+        },
+    },
+    "required": ["type"],
+    "additionalProperties": False
+}
+
 MSG_AUTODESTRUCTION = {
     "properties": {
         "type": {
