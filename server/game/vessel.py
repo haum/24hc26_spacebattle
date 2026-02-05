@@ -9,6 +9,7 @@ from messages.game import MAX_STAT
 from enum import IntEnum
 
 HP_LUT = [1, 21, 41, 61, 81, 101, 121, 146, 171, 196]
+RADAR_LUT = [10, 20, 40, 60, 80, 100, 120, 140, 170, 200]
 
 class STATS(IntEnum):
     H = 0
@@ -48,6 +49,7 @@ class Vessel:
         self.stats = stats
 
         self.hp = HP_LUT[self.stats[STATS.H]]
+        self.radar_radius = RADAR_LUT[self.stats[STATS.R]]
         self.energy = ENERGY.max
         self.move = None
 
