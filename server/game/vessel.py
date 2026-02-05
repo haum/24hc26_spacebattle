@@ -199,6 +199,7 @@ class Vessel:
         stats = ' '.join(map(lambda v, k: f'{k}:{v}', self.stats, 'HASD'))
         return ''.join([
             f'Vessel(p={self.position}, hp={self.hp}, ',
+            f'energy=({self.energy}), ',
             f'stats=({stats}), ',
             f'hname={self.hname})',
         ])
