@@ -88,6 +88,16 @@ def test_vector_mul():
     assert vector.mul([1, 2, 3, 4], -3) == [-3, -6, -9, -12]
 
 
+def test_vector_norm():
+    assert vector.norm([1, 2]) == 3
+    assert vector.norm([1, 2, 3]) == 6
+    assert vector.norm([1, 2, 3, 4]) == 10
+
+    assert vector.norm([-1, -2]) == 3
+    assert vector.norm([-1, -2, -3]) == 6
+    assert vector.norm([-1, -2, -3, -4]) == 10
+
+
 def test_vector_str():
     assert vector.str([1, 2]) == "[1.0, 2.0]"
     assert vector.str([1, 2, 3]) == "[1.0, 2.0, 3.0]"
