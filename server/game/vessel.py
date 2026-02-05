@@ -130,6 +130,22 @@ class Vessel:
             )
 
     @playing_only
+    async def onMsg_scan_radar(self, data):
+        if await self.spend_energy(ENERGY.radar):
+            for t in ('asteroid', 'vessel', 'torpedo', 'farmable'):
+                for o in self.u.iter(t, self):
+                    p = vector.mod_relative(
+                        vector.sub(o.position, self.position),
+                        self.u.size
+                    )
+                    if vector.norm(p) < self.radar_radius:
+                        await self.send({
+                            'type': 'active_scan',
+                            'what': t,
+                            'position': p,
+                        })
+
+    @playing_only
     async def onMsg_autodestruction(self, data):
         await self.destroy()
 
