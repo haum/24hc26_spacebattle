@@ -14,7 +14,7 @@ class STATS(IntEnum):
     H = 0
     A = 1
     S = 2
-    D = 3
+    R = 3
 
 class ENERGY:
     torpedo = 10
@@ -196,7 +196,7 @@ class Vessel:
         self.position = vector.mod(positions[imove], self.u.size)
 
     def __str__(self):
-        stats = ' '.join(map(lambda v, k: f'{k}:{v}', self.stats, 'HASD'))
+        stats = ' '.join(map(lambda v, k: f'{k}:{v}', self.stats, 'HASR'))
         return ''.join([
             f'Vessel(p={self.position}, hp={self.hp}, ',
             f'energy=({self.energy}), ',
