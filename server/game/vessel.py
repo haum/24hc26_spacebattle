@@ -55,7 +55,7 @@ class Vessel:
 
         self.send = no_send
         self.position = position
-        self.u.add(self, ['vessel', 'collidable', 'update'])
+        self.u.add(self, ['vessel', 'collidable', 'update', 'radar'])
 
     async def destroy(self):
         await self.send('Vessel destroyed')
@@ -138,6 +138,14 @@ class Vessel:
 
     async def onUnknownMsg(self, data):
         return 'Unknown message'
+
+    async def onPassiveScan(self, data):
+        p = vector.mod_relative(
+            vector.sub(data["position"], self.position),
+            self.u.size
+        )
+        if vector.norm(p) < self.radar_radius:
+            await self.send({ 'type': 'passive_scan', 'what': data['type'], 'position': p })
 
     async def onUpdate(self, _dt, t):
         positions = [self.position]
