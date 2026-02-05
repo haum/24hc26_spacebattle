@@ -37,6 +37,9 @@ def vector_autodim(v, u, modulo=True):
 def vector_mod(v, u):
     return list(map(lambda a, b: a%b, v, u))
 
+def vector_mod_relative(v, u):
+    return list(map(lambda a, b: m if (m:= a%b) < b/2 else m - b, v, u))
+
 def vector_add(v1, v2):
     if isinstance(v2, list):
         return list(map(lambda a, b: a+b, v1, v2))
@@ -60,6 +63,7 @@ def vector_str(v):
 vector = SimpleNamespace(
     autodim=vector_autodim,
     mod=vector_mod,
+    mod_relative=vector_mod_relative,
     add=vector_add,
     sub=vector_sub,
     mul=vector_mul,

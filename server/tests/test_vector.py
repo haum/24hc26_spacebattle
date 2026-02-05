@@ -12,6 +12,23 @@ def test_vector_mod():
     assert vector.mod([11, 12, 13], [10, 10, 10]) == [1, 2, 3]
     assert vector.mod([11, 12, 13, 14], [10, 10, 10, 10]) == [1, 2, 3, 4]
 
+def test_vector_mod_relative():
+    assert vector.mod_relative([1, 2], [10, 10]) == [1, 2]
+    assert vector.mod_relative([1, 2, 3], [10, 10, 10]) == [1, 2, 3]
+    assert vector.mod_relative([1, 2, 3, 4], [10, 10, 10, 10]) == [1, 2, 3, 4]
+
+    assert vector.mod_relative([11, 12], [10, 10]) == [1, 2]
+    assert vector.mod_relative([11, 12, 13], [10, 10, 10]) == [1, 2, 3]
+    assert vector.mod_relative([11, 12, 13, 14], [10, 10, 10, 10]) == [1, 2, 3, 4]
+
+    assert vector.mod_relative([-1, -2], [10, 10]) == [-1, -2]
+    assert vector.mod_relative([-1, -2, -3], [10, 10, 10]) == [-1, -2, -3]
+    assert vector.mod_relative([-1, -2, -3, -4], [10, 10, 10, 10]) == [-1, -2, -3, -4]
+
+    assert vector.mod_relative([9, 8], [10, 10]) == [-1, -2]
+    assert vector.mod_relative([9, 8, 7], [10, 10, 10]) == [-1, -2, -3]
+    assert vector.mod_relative([9, 8, 7, 6], [10, 10, 10, 10]) == [-1, -2, -3, -4]
+
 
 def test_vector_add_vectors():
     assert vector.add([1, 2], [3, 4]) == [4, 6]
