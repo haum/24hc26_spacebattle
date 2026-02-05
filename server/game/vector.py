@@ -42,6 +42,11 @@ def vector_add(v1, v2):
         return list(map(lambda a, b: a+b, v1, v2))
     return [i+v2 for i in v1]
 
+def vector_sub(v1, v2):
+    if isinstance(v2, list):
+        return list(map(lambda a, b: a-b, v1, v2))
+    return [i-v2 for i in v1]
+
 def vector_mul(v, k):
     return [i*k for i in v]
 
@@ -56,6 +61,7 @@ vector = SimpleNamespace(
     autodim=vector_autodim,
     mod=vector_mod,
     add=vector_add,
+    sub=vector_sub,
     mul=vector_mul,
     str=vector_str,
 )
