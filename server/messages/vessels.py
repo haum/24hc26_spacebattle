@@ -47,6 +47,24 @@ MSG_DROP_MINE = {
     "additionalProperties": False
 }
 
+MSG_FIRE_LASER = {
+    "properties": {
+        "type": {
+            "const": "fire_laser"
+        },
+        "direction": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 4,
+            "items": {
+                "type": "number",
+            }
+        },
+    },
+    "required": ["type", "direction"],
+    "additionalProperties": False
+}
+
 MSG_SCAN_RADAR = {
     "properties": {
         "type": {
