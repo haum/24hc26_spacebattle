@@ -162,3 +162,20 @@ async def test_vessels_collision():
 
     assert len(radar) == 1
     assert radar[0] == { 'type': 'explosion', 'position': [31, 10]}
+
+
+@pytest.mark.asyncio
+async def test_autodestruction():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
+    v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [40, 20])
+    radar = RadarLogger(u)
+
+    await runner.run_for(1)
+    await v1.onMsg_autodestruction({})
+
+    assert u.len('vessel') == 1
+
+    assert len(radar) == 1
+    assert radar[0] == { 'type': 'explosion', 'position': [30, 10]}
