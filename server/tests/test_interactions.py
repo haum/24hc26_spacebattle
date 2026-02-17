@@ -233,3 +233,20 @@ async def test_laser_attack():
 
     assert v2.hp == hp - 20
 
+
+@pytest.mark.asyncio
+async def test_laser_attack_two_vessels():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    v1 = Vessel(u, ['T', 1, 'test'], [1, 5, 1, 1], [20, 10])
+    v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [30, 10])
+    v3 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [32, 10])
+    hp2 = v2.hp
+    hp3 = v3.hp
+
+    await runner.run_for(1)
+    await v1.onMsg_fire_laser({'direction': [1, 0]})
+    await runner.run_for(1)
+
+    assert v2.hp == hp2 - 20
+    assert v3.hp == hp3
