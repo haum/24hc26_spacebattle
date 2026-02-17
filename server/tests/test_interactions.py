@@ -165,6 +165,22 @@ async def test_vessels_collision():
 
 
 @pytest.mark.asyncio
+async def test_vessel_collision_with_mine():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
+    Mine(u, [29, 10], u.t)
+
+    hp = v1.hp
+
+    await runner.run_for(1)
+    await v1.onMsg_move({'direction': [-1, 0]})
+    await runner.run_for(3)
+
+    assert u.len('mine') == 0
+    assert v1.hp == hp - 20
+
+@pytest.mark.asyncio
 async def test_autodestruction():
     logger = MessageLogger()
     u = Universe('test', [50, 50])
