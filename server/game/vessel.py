@@ -3,7 +3,7 @@ import functools
 from .vector import vector, hypervoxels_line
 from .torpedo import Torpedo
 from .mine import Mine
-from .radar import emit_explosion
+from .radar import emit_explosion, emit_move
 from .resource import Resource
 from messages.game import MAX_STAT
 from enum import IntEnum
@@ -163,6 +163,8 @@ class Vessel:
         )
         if vector.norm(p) < self.radar_radius:
             msg = data | { 'type': 'passive_scan'}
+            if data['what'] == 'move':
+                del msg['position']
             await self.send(msg)
 
     async def onUpdate(self, _dt, t):
@@ -177,7 +179,6 @@ class Vessel:
                 )),
                 self.u.size
             ))
-            self.move = None
 
         imove = len(positions)-1
 
@@ -221,6 +222,9 @@ class Vessel:
                 imove = 0
                 break
 
+        if self.move:
+            await emit_move(self.u, self.position, self.name(), self.move)
+            self.move = None
         self.position = vector.mod(positions[imove], self.u.size)
 
     def __str__(self):
