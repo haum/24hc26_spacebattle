@@ -6,7 +6,7 @@ from game.torpedo import Torpedo
 from game.universe import Universe
 from game.vessel import Vessel
 
-from .utils import UniverseRunner, RadarLogger
+from .utils import UniverseRunner, RadarLogger, MessageLogger
 
 
 @pytest.mark.asyncio
@@ -23,7 +23,7 @@ async def test_torpedo_vs_asteroid():
     assert u.len('torpedo') == 0
 
     assert len(radar) == 1
-    assert radar[0] == { 'type': 'explosion', 'position': [0, 10] }
+    assert radar[0] == { 'what': 'explosion', 'position': [0, 10] }
 
 
 @pytest.mark.asyncio
@@ -46,7 +46,7 @@ async def test_torpedo_attacking_vessel_behind_asteroid():
     assert v.hp == hp
 
     assert len(radar) == 1
-    assert radar[0] == { 'type': 'explosion', 'position': [10, 10] }
+    assert radar[0] == { 'what': 'explosion', 'position': [10, 10] }
 
 
 @pytest.mark.asyncio
@@ -69,7 +69,7 @@ async def test_torpedo_attacking_vessel_behind_asteroid_modulo1():
     assert v.hp == hp
 
     assert len(radar) == 1
-    assert radar[0] == { 'type': 'explosion', 'position': [10, 10] }
+    assert radar[0] == { 'what': 'explosion', 'position': [10, 10] }
 
 
 @pytest.mark.asyncio
@@ -92,7 +92,7 @@ async def test_torpedo_attacking_vessel_behind_asteroid_modulo2():
     assert v.hp == hp
 
     assert len(radar) == 1
-    assert radar[0] == { 'type': 'explosion', 'position': [40, 10] }
+    assert radar[0] == { 'what': 'explosion', 'position': [40, 10] }
 
 
 @pytest.mark.asyncio
@@ -116,7 +116,7 @@ async def test_torpedo_attacking_vessel_behind_another_vessel():
     assert v2.hp < hp2
 
     assert len(radar) == 1
-    assert radar[0] == { 'type': 'explosion', 'position': [40, 10] }
+    assert radar[0] == { 'what': 'explosion', 'position': [40, 10] }
 
 
 @pytest.mark.asyncio
@@ -139,7 +139,7 @@ async def test_torpedo_attacking_vessel_behind_mine():
     assert v.hp == hp
 
     assert len(radar) == 1
-    assert radar[0] == { 'type': 'explosion', 'position': [40, 10] }
+    assert radar[0] == { 'what': 'explosion', 'position': [40, 10] }
 
 
 @pytest.mark.asyncio
@@ -160,22 +160,27 @@ async def test_vessels_collision():
     assert v1.hp == hp1 - 15
     assert v2.hp == hp2 - 15
 
-    assert len(radar) == 1
-    assert radar[0] == { 'type': 'explosion', 'position': [31, 10]}
+    assert len(radar) == 2
+    assert radar[0] == { 'what': 'explosion', 'position': [31, 10]}
 
 
 @pytest.mark.asyncio
 async def test_autodestruction():
+    logger = MessageLogger()
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
     v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
-    v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [40, 20])
+    v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [30, 20])
     radar = RadarLogger(u)
+    v2.send = logger.log
 
     await runner.run_for(1)
     await v1.onMsg_autodestruction({})
+    await runner.run_for(1)
 
     assert u.len('vessel') == 1
 
     assert len(radar) == 1
-    assert radar[0] == { 'type': 'explosion', 'position': [30, 10]}
+    assert radar[0] == { 'what': 'explosion', 'position': [30, 10]}
+    assert len(logger) == 2
+    assert logger[-1] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [30, 10]}

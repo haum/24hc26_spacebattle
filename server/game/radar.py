@@ -5,7 +5,7 @@ async def emit_event(u, e):
 
 async def emit_explosion(u, o):
     await emit_event(u, {
-        'type': 'explosion',
+        'what': 'explosion',
         'position': o.position,
     })
 

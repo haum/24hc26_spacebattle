@@ -162,7 +162,8 @@ class Vessel:
             self.u.size
         )
         if vector.norm(p) < self.radar_radius:
-            await self.send({ 'type': 'passive_scan', 'what': data['type'], 'position': p })
+            msg = data | { 'type': 'passive_scan'}
+            await self.send(msg)
 
     async def onUpdate(self, _dt, t):
         positions = [self.position]
