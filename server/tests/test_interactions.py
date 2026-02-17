@@ -217,3 +217,19 @@ async def test_move_on_radar():
 
     assert len(logger) == 2
     assert logger[-1] == { 'type': 'passive_scan', 'what': 'move', 'vessel': v1.name(), 'movement': [1, 1]}
+
+
+@pytest.mark.asyncio
+async def test_laser_attack():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    v1 = Vessel(u, ['T', 1, 'test'], [1, 5, 1, 1], [20, 10])
+    v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [30, 10])
+    hp = v2.hp
+
+    await runner.run_for(1)
+    await v1.onMsg_fire_laser({'direction': [1, 0]})
+    await runner.run_for(1)
+
+    assert v2.hp == hp - 20
+

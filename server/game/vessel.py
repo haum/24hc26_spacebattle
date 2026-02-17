@@ -1,4 +1,5 @@
 import functools
+import itertools
 
 from .vector import vector, hypervoxels_line
 from .torpedo import Torpedo
@@ -10,6 +11,7 @@ from enum import IntEnum
 
 HP_LUT = [1, 21, 41, 61, 81, 101, 121, 146, 171, 196]
 RADAR_LUT = [10, 20, 40, 60, 80, 100, 120, 140, 170, 200]
+LASER_LUT = [_//2 for _ in RADAR_LUT]
 
 class STATS(IntEnum):
     H = 0
@@ -128,6 +130,37 @@ class Vessel:
                 self.u, self.position,
                 self.u.t + max(0.1, data['delay']), self
             )
+
+    @playing_only
+    async def onMsg_fire_laser(self, data):
+        if await self.spend_energy(ENERGY.laser):
+            d = vector.mul(data['direction'], 1/vector.norm(data['direction']))
+            positions = list(hypervoxels_line(
+                self.position,
+                vector.add(self.position, vector.mul(d, LASER_LUT[self.stats[STATS.A]])),
+                self.u.size
+            ))
+
+        touched = sorted(
+            (positions.index(o.position), o)
+            for o in itertools.chain(
+                self.u.iter('collidable', self),
+                self.u.iter('farmable', self)
+            )
+            if o.position in positions
+        )
+
+        for i, o in touched:
+            cls = o.__class__.__name__
+            if cls == 'Mine':
+                await emit_explosion(self.u, o)
+                self.u.remove(o)
+                break
+            elif cls == 'Asteroid' or cls == 'Resource':
+                break
+            elif cls == 'Vessel':
+                await o.damage(20)
+                break
 
     @playing_only
     async def onMsg_scan_radar(self, data):
