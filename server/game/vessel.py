@@ -147,6 +147,7 @@ class Vessel:
 
     @playing_only
     async def onMsg_autodestruction(self, data):
+        await emit_explosion(self.u, self)
         await self.destroy()
 
     async def onMsg_ping(self, data):
