@@ -87,7 +87,8 @@ class Vessel:
             return ':'.join(map(str, self.hname[:2]))
 
     async def damage(self, n):
-        self.hp -= n
+        self.hp = max(self.hp - n, 0)
+        await self.send({ 'type': 'damage', 'hp': self.hp })
         if self.hp <= 0:
             await self.destroy()
 
