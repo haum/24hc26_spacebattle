@@ -38,6 +38,17 @@ def playing_only(f):
     return wrapper
 
 
+def use_energy(amount):
+    def decorator(f):
+        @functools.wraps(f)
+        async def wrapper(vessel, data):
+            energy = amount(vessel) if callable(amount) else amount
+            if await vessel.spend_energy(energy):
+                return await f(vessel, data)
+        return wrapper
+    return decorator
+
+
 async def no_send(_):
     pass
 
@@ -109,74 +120,74 @@ class Vessel:
         return msgs
 
     @playing_only
+    @use_energy(lambda self: self.stats[STATS.S]/MAX_STAT*5)
     async def onMsg_move(self, data):
-        if await self.spend_energy(self.stats[STATS.S]/MAX_STAT*5):
-            d = data['direction']
-            self.move = d + [0] * (len(self.u.size) - len(d))
+        d = data['direction']
+        self.move = d + [0] * (len(self.u.size) - len(d))
 
     @playing_only
+    @use_energy(ENERGY.torpedo)
     async def onMsg_fire_torpedo(self, data):
-        if await self.spend_energy(ENERGY.torpedo):
-            Torpedo(
-                self.u, self.position,
-                vector.autodim(data['direction'], self.u.size, False),
-                self.u.t+5, self
-            )
+        Torpedo(
+            self.u, self.position,
+            vector.autodim(data['direction'], self.u.size, False),
+            self.u.t+5, self
+        )
 
     @playing_only
+    @use_energy(ENERGY.mine)
     async def onMsg_drop_mine(self, data):
-        if await self.spend_energy(ENERGY.mine):
-            Mine(
-                self.u, self.position,
-                self.u.t + max(0.1, data['delay']), self
-            )
+        Mine(
+            self.u, self.position,
+            self.u.t + max(0.1, data['delay']), self
+        )
 
     @playing_only
+    @use_energy(ENERGY.laser)
     async def onMsg_fire_laser(self, data):
-        if await self.spend_energy(ENERGY.laser):
-            d = vector.mul(data['direction'], 1/vector.norm(data['direction']))
-            positions = list(hypervoxels_line(
-                self.position,
-                vector.add(self.position, vector.mul(d, LASER_LUT[self.stats[STATS.A]])),
-                self.u.size
-            ))
+        d = vector.mul(data['direction'], 1/vector.norm(data['direction']))
+        positions = list(hypervoxels_line(
+            self.position,
+            vector.add(self.position, vector.mul(d, LASER_LUT[self.stats[STATS.A]])),
+            self.u.size
+        ))
 
-            touched = sorted(
-                (positions.index(o.position), o)
-                for o in itertools.chain(
-                    self.u.iter('collidable', self),
-                    self.u.iter('farmable', self)
-                )
-                if o.position in positions
+        touched = sorted(
+            (positions.index(o.position), o)
+            for o in itertools.chain(
+                self.u.iter('collidable', self),
+                self.u.iter('farmable', self)
             )
+            if o.position in positions
+        )
 
-            for i, o in touched:
-                cls = o.__class__.__name__
-                if cls == 'Mine':
-                    await emit_explosion(self.u, o)
-                    self.u.remove(o)
-                    break
-                elif cls == 'Asteroid' or cls == 'Resource':
-                    break
-                elif cls == 'Vessel':
-                    await o.damage(20)
-                    break
+        for i, o in touched:
+            cls = o.__class__.__name__
+            if cls == 'Mine':
+                await emit_explosion(self.u, o)
+                self.u.remove(o)
+                break
+            elif cls == 'Asteroid' or cls == 'Resource':
+                break
+            elif cls == 'Vessel':
+                await o.damage(20)
+                break
 
     @playing_only
+    @use_energy(ENERGY.radar)
     async def onMsg_scan_radar(self, data):
-        if await self.spend_energy(ENERGY.radar):
-            for t in ('asteroid', 'vessel', 'torpedo', 'farmable'):
-                for o in self.u.iter(t, self):
-                    p = vector.mod_relative(
-                        vector.sub(o.position, self.position),
-                        self.u.size
-                    )
-                    if vector.norm(p) < self.radar_radius:
-                        await self.send({
-                            'type': 'active_scan',
-                            'what': t,
-                            'position': p,
-                        })
+        for t in ('asteroid', 'vessel', 'torpedo', 'farmable'):
+            for o in self.u.iter(t, self):
+                p = vector.mod_relative(
+                    vector.sub(o.position, self.position),
+                    self.u.size
+                )
+                if vector.norm(p) < self.radar_radius:
+                    await self.send({
+                        'type': 'active_scan',
+                        'what': t,
+                        'position': p,
+                    })
 
     @playing_only
     async def onMsg_autodestruction(self, data):
