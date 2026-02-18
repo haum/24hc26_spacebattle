@@ -141,26 +141,26 @@ class Vessel:
                 self.u.size
             ))
 
-        touched = sorted(
-            (positions.index(o.position), o)
-            for o in itertools.chain(
-                self.u.iter('collidable', self),
-                self.u.iter('farmable', self)
+            touched = sorted(
+                (positions.index(o.position), o)
+                for o in itertools.chain(
+                    self.u.iter('collidable', self),
+                    self.u.iter('farmable', self)
+                )
+                if o.position in positions
             )
-            if o.position in positions
-        )
 
-        for i, o in touched:
-            cls = o.__class__.__name__
-            if cls == 'Mine':
-                await emit_explosion(self.u, o)
-                self.u.remove(o)
-                break
-            elif cls == 'Asteroid' or cls == 'Resource':
-                break
-            elif cls == 'Vessel':
-                await o.damage(20)
-                break
+            for i, o in touched:
+                cls = o.__class__.__name__
+                if cls == 'Mine':
+                    await emit_explosion(self.u, o)
+                    self.u.remove(o)
+                    break
+                elif cls == 'Asteroid' or cls == 'Resource':
+                    break
+                elif cls == 'Vessel':
+                    await o.damage(20)
+                    break
 
     @playing_only
     async def onMsg_scan_radar(self, data):
