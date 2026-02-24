@@ -12,6 +12,7 @@ from enum import IntEnum
 HP_LUT = [1, 21, 41, 61, 81, 101, 121, 146, 171, 196]
 RADAR_LUT = [10, 20, 40, 60, 80, 100, 120, 140, 170, 200]
 LASER_LUT = [_//2 for _ in RADAR_LUT]
+IEM_LUT = [int(_*1.2) for _ in RADAR_LUT]
 
 class STATS(IntEnum):
     H = 0
@@ -49,6 +50,16 @@ def use_energy(amount):
     return decorator
 
 
+def iem_sensitive(f):
+    @functools.wraps(f)
+    async def wrapper(vessel, data):
+        if vessel.iemed_until > vessel.u.t:
+            await vessel.send({'type': 'iem_freeze'})
+        else:
+            return await f(vessel, data)
+    return wrapper
+
+
 async def no_send(_):
     pass
 
@@ -58,6 +69,7 @@ class Vessel:
         self.u = universe
 
         self.frozen = True
+        self.iemed_until = 0
         self.hname = hname
         self.stats = stats
 
@@ -105,6 +117,9 @@ class Vessel:
             'type': 'start_battle',
         })
 
+    async def register_iem(self, t_end):
+        self.iemed_until = t_end
+
     async def onMsg_connect(self, data):
         if data['id'] != self.name(True):
             return 'Connected to another vessel'
@@ -121,12 +136,14 @@ class Vessel:
         return msgs
 
     @playing_only
+    @iem_sensitive
     @use_energy(lambda self: self.stats[STATS.S]/MAX_STAT*5)
     async def onMsg_move(self, data):
         d = data['direction']
         self.move = d + [0] * (len(self.u.size) - len(d))
 
     @playing_only
+    @iem_sensitive
     @use_energy(ENERGY.torpedo)
     async def onMsg_fire_torpedo(self, data):
         Torpedo(
@@ -136,6 +153,7 @@ class Vessel:
         )
 
     @playing_only
+    @iem_sensitive
     @use_energy(ENERGY.mine)
     async def onMsg_drop_mine(self, data):
         Mine(
@@ -144,6 +162,7 @@ class Vessel:
         )
 
     @playing_only
+    @iem_sensitive
     @use_energy(ENERGY.laser)
     async def onMsg_fire_laser(self, data):
         d = vector.mul(data['direction'], 1/vector.norm(data['direction']))
@@ -175,6 +194,29 @@ class Vessel:
                 break
 
     @playing_only
+    @iem_sensitive
+    @use_energy(ENERGY.iem)
+    async def onMsg_fire_iem(self, data):
+        d = vector.mul(data['direction'], 1/vector.norm(data['direction']))
+        positions = list(hypervoxels_line(
+            self.position,
+            vector.add(self.position, vector.mul(d, IEM_LUT[self.stats[STATS.A]])),
+            self.u.size
+        ))
+
+        touched = sorted(
+            (positions.index(o.position), o)
+            for o in self.u.iter('collidable', self)
+            if o.position in positions
+        )
+
+        for i, o in touched:
+            cls = o.__class__.__name__
+            if cls == 'Vessel':
+                await o.register_iem(self.u.t + 5)
+
+    @playing_only
+    @iem_sensitive
     @use_energy(ENERGY.radar)
     async def onMsg_scan_radar(self, data):
         for t in ('asteroid', 'vessel', 'torpedo', 'farmable'):
@@ -201,6 +243,7 @@ class Vessel:
     async def onUnknownMsg(self, data):
         return 'Unknown message'
 
+    @iem_sensitive
     async def onPassiveScan(self, data):
         p = vector.mod_relative(
             vector.sub(data["position"], self.position),

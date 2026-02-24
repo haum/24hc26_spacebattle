@@ -250,3 +250,47 @@ async def test_laser_attack_two_vessels():
 
     assert v2.hp == hp2 - 20
     assert v3.hp == hp3
+
+
+@pytest.mark.asyncio
+async def test_iem_attack():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    logger = MessageLogger()
+    v1 = Vessel(u, ['T', 1, 'test'], [1, 5, 1, 1], [20, 10])
+    v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [30, 10])
+    v2.send = logger.log
+
+
+    await runner.run_for(1)
+    await v1.onMsg_fire_iem({'direction': [1, 0]})
+    await runner.run_for(1)
+
+    assert v2.iemed_until > u.t
+
+    await v2.onMsg_move({'direction': [1, 0]})
+    assert logger[-1] == { 'type': 'iem_freeze'}
+
+
+@pytest.mark.asyncio
+async def test_iem_attack_two_vessels():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    l2 = MessageLogger()
+    l3 = MessageLogger()
+    v1 = Vessel(u, ['T', 1, 'test'], [1, 5, 1, 1], [20, 10])
+    v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [30, 10])
+    v3 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [32, 10])
+    v2.send = l2.log
+    v3.send = l3.log
+
+    await runner.run_for(1)
+    await v1.onMsg_fire_iem({'direction': [1, 0]})
+    await runner.run_for(1)
+
+    assert v2.iemed_until > u.t
+    assert v3.iemed_until > u.t
+    await v2.onMsg_move({'direction': [1, 0]})
+    await v3.onMsg_move({'direction': [1, 0]})
+    assert l2[-1] == { 'type': 'iem_freeze'}
+    assert l3[-1] == { 'type': 'iem_freeze'}
