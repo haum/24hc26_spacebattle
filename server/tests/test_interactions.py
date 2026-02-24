@@ -161,7 +161,7 @@ async def test_vessels_collision():
     assert v2.hp == hp2 - 15
 
     assert len(radar) == 2
-    assert radar[0] == { 'what': 'explosion', 'position': [31, 10]}
+    assert radar[1] == { 'what': 'explosion', 'position': [31, 10]}
 
 
 @pytest.mark.asyncio
