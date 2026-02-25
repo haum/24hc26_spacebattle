@@ -324,7 +324,10 @@ class Vessel:
                 break
 
         if self.move:
-            await emit_move(self.u, self.position, self.name(), self.move)
+            await emit_move(
+                self.u, self.position, self.name(),
+                vector.mod_relative(vector.sub(positions[imove], self.position), self.u.size)
+            )
             self.move = None
         self.position = vector.mod(positions[imove], self.u.size)
         for o in explosions:
