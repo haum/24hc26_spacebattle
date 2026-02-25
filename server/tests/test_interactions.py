@@ -180,6 +180,23 @@ async def test_vessel_collision_with_mine():
     assert u.len('mine') == 0
     assert v1.hp == hp - 20
 
+
+@pytest.mark.asyncio
+async def test_mine_chainreaction():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    m1 = Mine(u, [30, 10], u.t)
+    m2 = Mine(u, [34, 10], u.t)
+    radar = RadarLogger(u)
+
+    await runner.run_for(1)
+    await m1.destroy()
+    await runner.run_for(1)
+
+    assert u.len('mine') == 0
+    assert len(radar) == 2
+
+
 @pytest.mark.asyncio
 async def test_autodestruction():
     logger = MessageLogger()
@@ -200,6 +217,33 @@ async def test_autodestruction():
     assert radar[0] == { 'what': 'explosion', 'position': [30, 10]}
     assert len(logger) == 2
     assert logger[-1] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [30, 10]}
+
+
+@pytest.mark.asyncio
+async def test_autodestruction_two_vessels():
+    logger = MessageLogger()
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    v1 = Vessel(u, ['T', 1, 'test'], [0, 1, 1, 1], [30, 10])
+    v2 = Vessel(u, ['T', 2, 'test'], [0, 1, 1, 1], [30, 13])
+    v3 = Vessel(u, ['T', 3, 'test'], [0, 1, 1, 1], [30, 16])
+    m = Mine(u, [30, 8], u.t)
+    radar = RadarLogger(u)
+    v3.send = logger.log
+
+    await runner.run_for(1)
+    await v1.onMsg_autodestruction({})
+    await runner.run_for(1)
+
+    assert u.len('vessel') == 1
+    assert u.len('mine') == 0
+
+    assert len(radar) == 2
+    assert radar[-2] == { 'what': 'explosion', 'position': [30, 10]}
+    assert radar[-1] == { 'what': 'explosion', 'position': [30, 8]}
+    assert len(logger) == 3
+    assert logger[-2] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [30, 10]}
+    assert logger[-1] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [30, 8]}
 
 
 @pytest.mark.asyncio

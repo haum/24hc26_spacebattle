@@ -236,6 +236,19 @@ class Vessel:
     async def onMsg_autodestruction(self, data):
         await emit_explosion(self.u, self)
         await self.destroy()
+        objects_within_range = (o
+            for o in self.u.iter('collidable', self)
+            if vector.norm(vector.mod_relative(
+                vector.sub(o.position, self.position),
+                self.u.size
+            )) < 5
+        )
+        for o in objects_within_range:
+            cls = o.__class__.__name__
+            if cls == 'Vessel':
+                await o.damage(20)
+            if cls == 'Mine':
+                await o.destroy()
 
     async def onMsg_ping(self, data):
         return {'type': 'pong', 'n': data.get('n', None)}
@@ -293,9 +306,7 @@ class Vessel:
             cls = o.__class__.__name__
             if cls == 'Mine':
                 if o.enabled_time < t:
-                    await emit_explosion(self.u, o)
-                    self.u.remove(o)
-                    await self.damage(20)
+                    await o.destroy()
                     imove = i
                     break
             elif cls == 'Asteroid':
