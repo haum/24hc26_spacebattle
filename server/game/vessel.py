@@ -320,7 +320,7 @@ class Vessel:
                 explosions.append(o)
                 await self.damage(15)
                 await o.damage(15)
-                imove = 0
+                imove = i-1
                 break
 
         if self.move:
