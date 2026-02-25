@@ -324,7 +324,7 @@ async def test_iem_attack_two_vessels():
     l3 = MessageLogger()
     v1 = Vessel(u, ['T', 1, 'test'], [1, 5, 1, 1], [20, 10])
     v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [30, 10])
-    v3 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [32, 10])
+    v3 = Vessel(u, ['T', 3, 'test'], [1, 1, 1, 1], [32, 10])
     v2.send = l2.log
     v3.send = l3.log
 
