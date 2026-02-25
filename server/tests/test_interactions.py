@@ -251,15 +251,18 @@ async def test_move_on_radar():
     logger = MessageLogger()
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
-    v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
-    v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [29, 9])
+    v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [48, 10])
+    v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [45, 9])
     v2.send = logger.log
 
     await runner.run_for(1)
     await v1.onMsg_move({'direction': [1, 1]})
     await runner.run_for(1)
+    await v1.onMsg_move({'direction': [1, 1]})
+    await runner.run_for(1)
 
-    assert len(logger) == 2
+    assert len(logger) == 3
+    assert logger[-2] == { 'type': 'passive_scan', 'what': 'move', 'vessel': v1.name(), 'movement': [1, 1]}
     assert logger[-1] == { 'type': 'passive_scan', 'what': 'move', 'vessel': v1.name(), 'movement': [1, 1]}
 
 
