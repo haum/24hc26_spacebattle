@@ -284,6 +284,7 @@ class Vessel:
         imove = len(positions)-1
         explosions = []
         mines = []
+        damages = []
 
         self.energy = min(self.energy+_dt*ENERGY.regen, ENERGY.max)
 
@@ -313,14 +314,13 @@ class Vessel:
                     break
             elif cls == 'Asteroid':
                 explosions.append(o)
-                await self.damage(1_000_000)
+                damages.append((self, 1_000_000))
                 imove = i
                 break
             elif cls == 'Vessel' and o != self:
                 explosions.append(o)
                 explosions.append(self)
-                await self.damage(15)
-                await o.damage(15)
+                damages += [(self, 15), (o, 15)]
                 imove = i-1
                 break
 
@@ -336,6 +336,8 @@ class Vessel:
         for o in mines:
             await o.destroy()
             self.u.remove(o)
+        for o, amount in damages:
+            await o.damage(amount)
 
     def __str__(self):
         stats = ' '.join(map(lambda v, k: f'{k}:{v}', self.stats, 'HASR'))
