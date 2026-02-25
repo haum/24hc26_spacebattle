@@ -220,7 +220,7 @@ async def test_autodestruction():
     assert len(radar) == 1
     assert radar[0] == { 'what': 'explosion', 'position': [30, 10]}
     assert len(logger) == 2
-    assert logger[-1] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [30, 10]}
+    assert logger[-1] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [0, -10]}
 
 
 @pytest.mark.asyncio
@@ -246,8 +246,8 @@ async def test_autodestruction_two_vessels():
     assert radar[-2] == { 'what': 'explosion', 'position': [30, 10]}
     assert radar[-1] == { 'what': 'explosion', 'position': [30, 8]}
     assert len(logger) == 3
-    assert logger[-2] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [30, 10]}
-    assert logger[-1] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [30, 8]}
+    assert logger[-2] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [0, -6]}
+    assert logger[-1] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [0, -8]}
 
 
 @pytest.mark.asyncio

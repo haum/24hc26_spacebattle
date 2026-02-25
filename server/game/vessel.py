@@ -264,6 +264,7 @@ class Vessel:
         )
         if vector.norm(p) < self.radar_radius:
             msg = data | { 'type': 'passive_scan'}
+            msg['position'] = p
             if data['what'] == 'move':
                 del msg['position']
             await self.send(msg)
