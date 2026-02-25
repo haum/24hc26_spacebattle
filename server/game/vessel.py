@@ -318,6 +318,7 @@ class Vessel:
                 break
             elif cls == 'Vessel' and o != self:
                 explosions.append(o)
+                explosions.append(self)
                 await self.damage(15)
                 await o.damage(15)
                 imove = i-1

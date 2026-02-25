@@ -160,8 +160,9 @@ async def test_vessels_collision():
     assert v1.hp == hp1 - 15
     assert v2.hp == hp2 - 15
 
-    assert len(radar) == 2
+    assert len(radar) == 3
     assert radar[1] == { 'what': 'explosion', 'position': [31, 10]}
+    assert radar[2] == { 'what': 'explosion', 'position': [30, 10]}
 
     assert v1.position == [30, 10]
     assert v2.position == [31, 10]
