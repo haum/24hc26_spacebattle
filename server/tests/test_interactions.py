@@ -203,13 +203,14 @@ async def test_mine_chainreaction():
 
 @pytest.mark.asyncio
 async def test_autodestruction():
-    logger = MessageLogger()
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
     v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
     v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [30, 20])
     radar = RadarLogger(u)
-    v2.send = logger.log
+
+    l2 = MessageLogger()
+    v2.send = l2.log
 
     await runner.run_for(1)
     await v1.onMsg_autodestruction({})
@@ -219,13 +220,12 @@ async def test_autodestruction():
 
     assert len(radar) == 1
     assert radar[0] == { 'what': 'explosion', 'position': [30, 10]}
-    assert len(logger) == 2
-    assert logger[-1] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [0, -10]}
+    assert len(l2) == 2
+    assert l2[-1] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [0, -10]}
 
 
 @pytest.mark.asyncio
 async def test_autodestruction_two_vessels():
-    logger = MessageLogger()
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
     v1 = Vessel(u, ['T', 1, 'test'], [0, 1, 1, 1], [30, 10])
@@ -233,7 +233,9 @@ async def test_autodestruction_two_vessels():
     v3 = Vessel(u, ['T', 3, 'test'], [0, 1, 1, 1], [30, 16])
     m = Mine(u, [30, 8], u.t)
     radar = RadarLogger(u)
-    v3.send = logger.log
+
+    l3 = MessageLogger()
+    v3.send = l3.log
 
     await runner.run_for(1)
     await v1.onMsg_autodestruction({})
@@ -245,19 +247,20 @@ async def test_autodestruction_two_vessels():
     assert len(radar) == 2
     assert radar[-2] == { 'what': 'explosion', 'position': [30, 10]}
     assert radar[-1] == { 'what': 'explosion', 'position': [30, 8]}
-    assert len(logger) == 3
-    assert logger[-2] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [0, -6]}
-    assert logger[-1] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [0, -8]}
+    assert len(l3) == 3
+    assert l3[-2] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [0, -6]}
+    assert l3[-1] == { 'type': 'passive_scan', 'what': 'explosion', 'position': [0, -8]}
 
 
 @pytest.mark.asyncio
 async def test_move_on_radar():
-    logger = MessageLogger()
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
     v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [48, 10])
     v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [45, 9])
-    v2.send = logger.log
+
+    l2 = MessageLogger()
+    v2.send = l2.log
 
     await runner.run_for(1)
     await v1.onMsg_move({'direction': [1, 1]})
@@ -265,9 +268,9 @@ async def test_move_on_radar():
     await v1.onMsg_move({'direction': [1, 1]})
     await runner.run_for(1)
 
-    assert len(logger) == 3
-    assert logger[-2] == { 'type': 'passive_scan', 'what': 'move', 'vessel': v1.name(), 'movement': [1, 1]}
-    assert logger[-1] == { 'type': 'passive_scan', 'what': 'move', 'vessel': v1.name(), 'movement': [1, 1]}
+    assert len(l2) == 3
+    assert l2[-2] == { 'type': 'passive_scan', 'what': 'move', 'vessel': v1.name(), 'movement': [1, 1]}
+    assert l2[-1] == { 'type': 'passive_scan', 'what': 'move', 'vessel': v1.name(), 'movement': [1, 1]}
 
 
 @pytest.mark.asyncio
@@ -307,10 +310,11 @@ async def test_laser_attack_two_vessels():
 async def test_iem_attack():
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
-    logger = MessageLogger()
     v1 = Vessel(u, ['T', 1, 'test'], [1, 5, 1, 1], [20, 10])
     v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [30, 10])
-    v2.send = logger.log
+
+    l2 = MessageLogger()
+    v2.send = l2.log
 
 
     await runner.run_for(1)
@@ -320,19 +324,20 @@ async def test_iem_attack():
     assert v2.iemed_until > u.t
 
     await v2.onMsg_move({'direction': [1, 0]})
-    assert logger[-1] == { 'type': 'iem_freeze'}
+    assert l2[-1] == { 'type': 'iem_freeze'}
 
 
 @pytest.mark.asyncio
 async def test_iem_attack_two_vessels():
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
-    l2 = MessageLogger()
-    l3 = MessageLogger()
     v1 = Vessel(u, ['T', 1, 'test'], [1, 5, 1, 1], [20, 10])
     v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [30, 10])
     v3 = Vessel(u, ['T', 3, 'test'], [1, 1, 1, 1], [32, 10])
+
+    l2 = MessageLogger()
     v2.send = l2.log
+    l3 = MessageLogger()
     v3.send = l3.log
 
     await runner.run_for(1)

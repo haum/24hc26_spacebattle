@@ -9,13 +9,14 @@ from .utils import UniverseRunner, MessageLogger
 
 @pytest.mark.asyncio
 async def test_harvest_regular():
-    logger = MessageLogger()
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
     r = Resource(u, [0, 10], 40)
-    v.send = logger.log
     v.energy = 0
+
+    logger = MessageLogger()
+    v.send = logger.log
 
     await runner.run_for(1)
 
@@ -25,13 +26,14 @@ async def test_harvest_regular():
 
 @pytest.mark.asyncio
 async def test_harvest_finish():
-    logger = MessageLogger()
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
     r = Resource(u, [0, 10], 20)
-    v.send = logger.log
     v.energy = 0
+
+    logger = MessageLogger()
+    v.send = logger.log
 
     await runner.run_for(1)
 
@@ -43,13 +45,14 @@ async def test_harvest_finish():
 
 @pytest.mark.asyncio
 async def test_harvest_partial():
-    logger = MessageLogger()
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
     r = Resource(u, [0, 10], 9)
-    v.send = logger.log
     v.energy = 0
+
+    logger = MessageLogger()
+    v.send = logger.log
 
     await runner.run_for(1)
 
@@ -61,9 +64,10 @@ async def test_harvest_partial():
 
 @pytest.mark.asyncio
 async def test_destroy_to_farmable():
-    logger = MessageLogger()
     u = Universe('test', [50, 50])
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
+
+    logger = MessageLogger()
     v.send = logger.log
 
     await v.destroy()
