@@ -186,6 +186,27 @@ async def test_vessel_collision_with_mine():
 
 
 @pytest.mark.asyncio
+async def test_destroy_vessels_through_mines():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    Torpedo(u, [20, 10], [2, 0], u.t+2)
+    m1 = Mine(u, [30, 10], u.t)
+    m2 = Mine(u, [34, 10], u.t)
+    m3 = Mine(u, [38, 10], u.t)
+    m4 = Mine(u, [38, 14], u.t)
+    v1 = Vessel(u, ['T', 1, 'test'], [0, 1, 1, 1], [30, 14])
+    v2 = Vessel(u, ['T', 2, 'test'], [0, 1, 1, 1], [38, 16])
+    v3 = Vessel(u, ['T', 3, 'test'], [0, 1, 1, 1], [10, 10])
+    radar = RadarLogger(u)
+
+    await runner.run_for(1)
+
+    assert u.len('mine') == 0
+    assert u.len('vessel') == 1
+    assert len(radar) == 4
+
+
+@pytest.mark.asyncio
 async def test_mine_chainreaction():
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
