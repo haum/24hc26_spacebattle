@@ -72,7 +72,8 @@ async def test_destroy_to_farmable():
 
     await v.destroy()
 
-    r = (u.iter('farmable')).__next__()
+    assert u.len('farmable') == 1
+    r = next(u.iter('farmable'))
     assert r.quantity == HP_LUT[1]
     assert r.position == v.position
     assert r.rate == 5
