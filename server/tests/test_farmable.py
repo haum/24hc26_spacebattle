@@ -12,7 +12,8 @@ async def test_harvest_regular():
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
-    r = Resource(u, [0, 10], 40)
+    r1 = Resource(u, [0, 10], 40)
+    r2 = Resource(u, [0, 11], 40)
     v.energy = 0
 
     logger = MessageLogger()
@@ -20,7 +21,8 @@ async def test_harvest_regular():
 
     await runner.run_for(1)
 
-    assert r.quantity == 20
+    assert r1.quantity == 20
+    assert r2.quantity == 40
     assert v.energy == 20+10 # harvested 20 + 10 regen
 
 
