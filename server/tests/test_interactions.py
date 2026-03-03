@@ -5,6 +5,7 @@ from game.mine import Mine
 from game.torpedo import Torpedo
 from game.universe import Universe
 from game.vessel import Vessel
+from game.resource import Resource
 
 from .utils import UniverseRunner, RadarLogger, MessageLogger
 
@@ -413,6 +414,29 @@ async def test_laser_attacking_vessel_behind_asteroid():
     await runner.run_for(1)
 
     assert u.len('asteroid') == 1
+    assert u.len('vessel') == 2
+
+    assert v1.hp == hp1
+
+    assert len(radar) == 0
+
+
+@pytest.mark.asyncio
+async def test_laser_attacking_vessel_behind_farmable():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
+    v2 = Vessel(u, ['T', 2, 'test'], [1, 9, 1, 1], [0, 30])
+    Resource(u, [0, 20], 10)
+    radar = RadarLogger(u)
+
+    hp1 = v1.hp
+
+    await runner.run_for(1)
+    await v2.onMsg_fire_laser({ 'direction': [0, -1] })
+    await runner.run_for(1)
+
+    assert u.len('farmable') == 1
     assert u.len('vessel') == 2
 
     assert v1.hp == hp1
