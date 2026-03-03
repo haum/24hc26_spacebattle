@@ -10,6 +10,18 @@ from .utils import UniverseRunner, RadarLogger, MessageLogger
 
 
 @pytest.mark.asyncio
+async def test_torpedo_death():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    Torpedo(u, [10, 10], [-5, 0], u.t+1)
+    radar = RadarLogger(u)
+
+    await runner.run_for(3)
+
+    assert u.len('torpedo') == 0
+
+
+@pytest.mark.asyncio
 async def test_torpedo_vs_asteroid():
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
