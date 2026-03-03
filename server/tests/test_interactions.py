@@ -429,3 +429,25 @@ async def test_iem_attack_two_vessels():
     await v3.onMsg_move({'direction': [1, 0]})
     assert l2[-1] == { 'type': 'iem_freeze'}
     assert l3[-1] == { 'type': 'iem_freeze'}
+
+@pytest.mark.asyncio
+async def test_active_scan():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 3], [20, 10])
+    v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [30, 10])
+    m = Mine(u, [20, 20], u.t)
+    r = Torpedo(u, [12, 0], [0, 1], u.t+10)
+    a = Asteroid(u, [20, 0])
+
+    l1 = MessageLogger()
+    v1.send = l1.log
+
+    await runner.run_for(1)
+    await v1.onMsg_scan_radar({})
+    await runner.run_for(1)
+
+    assert { 'type': 'active_scan', 'what': 'vessel', 'position': [10, 0]} in l1.messages
+    assert { 'type': 'active_scan', 'what': 'mine', 'position': [0, 10]} in l1.messages
+    assert { 'type': 'active_scan', 'what': 'torpedo', 'position': [-8, 0]} in l1.messages
+    assert { 'type': 'active_scan', 'what': 'asteroid', 'position': [0, -10]} in l1.messages

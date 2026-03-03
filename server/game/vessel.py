@@ -218,7 +218,7 @@ class Vessel:
     @iem_sensitive
     @use_energy(ENERGY.radar)
     async def onMsg_scan_radar(self, data):
-        for t in ('asteroid', 'vessel', 'torpedo', 'farmable'):
+        for t in ('asteroid', 'mine', 'vessel', 'torpedo', 'farmable'):
             for o in self.u.iter(t, self):
                 p = vector.mod_relative(
                     vector.sub(o.position, self.position),
