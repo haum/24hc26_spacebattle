@@ -141,6 +141,30 @@ async def test_torpedo_attacking_vessel_behind_mine():
     assert len(radar) == 1
     assert radar[0] == { 'what': 'explosion', 'position': [40, 10] }
 
+@pytest.mark.asyncio
+async def test_vessel_attacking_vessel_with_torpedo():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
+    v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [40, 10])
+    radar = RadarLogger(u)
+
+    hp1 = v1.hp
+    hp2 = v2.hp
+
+    await runner.run_for(1)
+    await v1.onMsg_fire_torpedo({'direction': [1, 0]})
+    await runner.run_for(1)
+
+    assert u.len('torpedo') == 0
+    assert u.len('vessel') == 2
+
+    assert v1.hp == hp1
+    assert v2.hp == hp2 - 20
+
+    assert len(radar) == 1
+    assert radar[0] == { 'what': 'explosion', 'position': [40, 10] }
+
 
 @pytest.mark.asyncio
 async def test_vessels_collision():
