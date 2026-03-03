@@ -231,6 +231,24 @@ async def test_destroy_vessels_through_mines():
 
 
 @pytest.mark.asyncio
+async def test_vessel_drop_mine():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [30, 10])
+    radar = RadarLogger(u)
+
+    await runner.run_for(1)
+    await v.onMsg_drop_mine({'delay': 0.1})
+    await v.onMsg_move({'direction': [1, 0]})
+    await runner.run_for(1)
+
+    assert u.len('mine') == 1
+    assert u.len('vessel') == 1
+    assert list(u.iter('mine'))[0].position == [30, 10]
+    assert len(radar) == 1
+
+
+@pytest.mark.asyncio
 async def test_mine_chainreaction():
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
