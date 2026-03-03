@@ -51,9 +51,8 @@ class Torpedo:
                 self.u.remove(self)
                 break
             elif cls == 'Mine':
-                await emit_explosion(self.u, o)
+                await o.destroy()
                 self.u.remove(self)
-                self.u.remove(o)
                 break
 
         self.position = positions[-1]

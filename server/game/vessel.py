@@ -184,8 +184,7 @@ class Vessel:
         for i, o in touched:
             cls = o.__class__.__name__
             if cls == 'Mine':
-                await emit_explosion(self.u, o)
-                self.u.remove(o)
+                o.destroy()
                 break
             elif cls == 'Asteroid' or cls == 'Resource':
                 break
@@ -336,7 +335,6 @@ class Vessel:
             await emit_explosion(self.u, o)
         for o in mines:
             await o.destroy()
-            self.u.remove(o)
         for o, amount in damages:
             await o.damage(amount)
 
