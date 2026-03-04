@@ -344,5 +344,5 @@ class Vessel:
             f'Vessel(p={self.position}, hp={self.hp}, ',
             f'energy=({self.energy}), ',
             f'stats=({stats}), ',
-            f'hname={self.hname})',
+            f'hname=({self.name()})',
         ])
