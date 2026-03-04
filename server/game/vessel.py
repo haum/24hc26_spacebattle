@@ -184,7 +184,7 @@ class Vessel:
         for i, o in touched:
             cls = o.__class__.__name__
             if cls == 'Mine':
-                o.destroy()
+                await o.destroy()
                 break
             elif cls == 'Asteroid' or cls == 'Resource':
                 break

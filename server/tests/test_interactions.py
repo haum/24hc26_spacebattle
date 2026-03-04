@@ -445,6 +445,51 @@ async def test_laser_attacking_vessel_behind_farmable():
 
 
 @pytest.mark.asyncio
+async def test_laser_attacking_vessel_behind_mine():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
+    v2 = Vessel(u, ['T', 2, 'test'], [1, 9, 1, 1], [0, 30])
+    Mine(u, [0, 20], u.t)
+    radar = RadarLogger(u)
+
+    hp1 = v1.hp
+
+    await runner.run_for(1)
+    await v2.onMsg_fire_laser({ 'direction': [0, -1] })
+    await runner.run_for(1)
+
+    assert u.len('mine') == 0
+    assert u.len('vessel') == 2
+
+    assert v1.hp == hp1
+
+    assert len(radar) == 1
+
+@pytest.mark.asyncio
+async def test_laser_attacking_vessel_behind_mine_close():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 16])
+    v2 = Vessel(u, ['T', 2, 'test'], [1, 9, 1, 1], [0, 30])
+    Mine(u, [0, 20], u.t)
+    radar = RadarLogger(u)
+
+    hp1 = v1.hp
+
+    await runner.run_for(1)
+    await v2.onMsg_fire_laser({ 'direction': [0, -1] })
+    await runner.run_for(1)
+
+    assert u.len('mine') == 0
+    assert u.len('vessel') == 2
+
+    assert v1.hp == hp1 - 20
+
+    assert len(radar) == 1
+
+
+@pytest.mark.asyncio
 async def test_iem_attack():
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
