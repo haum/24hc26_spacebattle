@@ -111,11 +111,13 @@
 				const msg = JSON.parse(e.data)
 				if (msg.type == 'hello') {
 					const u = window.prompt('universe');
-					ws.send(JSON.stringify({
+					const rq = {
 						type: 'rq_world_report',
 						dt: 0.5,
 						universe: u,
-					}));
+					};
+					if (msg.need_keys) rq['key'] = window.prompt('key');
+					ws.send(JSON.stringify(rq));
 				} else if (msg.type == 'world_report') {
 					objs = msg;
 					requestAnimationFrame(draw);
