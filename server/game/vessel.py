@@ -172,14 +172,14 @@ class Vessel:
             self.u.size
         ))
 
-        touched = sorted(
+        touched = sorted((
             (positions.index(o.position), o)
             for o in itertools.chain(
                 self.u.iter('collidable', self),
                 self.u.iter('farmable', self)
             )
             if o.position in positions
-        )
+        ), key=lambda x:x[0])
 
         for i, o in touched:
             cls = o.__class__.__name__
@@ -203,11 +203,11 @@ class Vessel:
             self.u.size
         ))
 
-        touched = sorted(
+        touched = sorted((
             (positions.index(o.position), o)
             for o in self.u.iter('collidable', self)
             if o.position in positions
-        )
+        ), key=lambda x:x[0])
 
         for i, o in touched:
             cls = o.__class__.__name__
@@ -299,11 +299,11 @@ class Vessel:
             if not cont:
                 await self.send({'type': 'resource_depleted'})
 
-        booms = sorted(
+        booms = sorted((
             (positions.index(o.position), o)
             for o in self.u.iter('collidable', self)
             if o.position in positions
-        )
+        ), key=lambda x:x[0])
 
         for i, o in booms:
             cls = o.__class__.__name__

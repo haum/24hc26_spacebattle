@@ -32,11 +32,11 @@ class Torpedo:
             self.u.size
         ))
 
-        booms = sorted(
+        booms = sorted((
             (positions.index(o.position), o)
             for o in self.u.iter('collidable', self)
             if o.position in positions
-        )
+        ), key=lambda x:x[0])
 
         for i, o in booms:
             cls = o.__class__.__name__
