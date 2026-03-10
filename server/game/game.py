@@ -5,6 +5,7 @@ import math
 import random
 import string
 import time
+import json
 
 from .universe import Universe
 from .asteroid import Asteroid
@@ -30,7 +31,7 @@ def random_position(u):
 def admin_only(f):
     @functools.wraps(f)
     async def wrapper(game, data):
-        if game.ADMIN_KEY and data.get('key', None) != Game.ADMIN_KEY:
+        if data.get('key', None) != game.get_key('admin'):
             return 'Invalid admin key'
         return await f(game, data)
     return wrapper
@@ -46,22 +47,26 @@ def start_lobby_helper(game, lobby):
 
 
 class Game:
-    try:
-        with open("admin_key.txt", "r") as f:
-            ADMIN_KEY = f.read().strip()
-    except FileNotFoundError:
-        ADMIN_KEY = None
-
     def __init__(self):
         self.lobby = Universe(randomstr(5), 2)
         self.universes = set()
         self.vessels = weakref.WeakValueDictionary()
         self.tasks = set()
 
+        try:
+            with open("keys.json", "r") as f:
+                self.keys = json.load(f)
+        except FileNotFoundError:
+            self.keys = {}
+
+
     async def destroy_vessels_of_team(self, team):
         for k in list(self.vessels.keys()):
             if self.vessels.get(k).hname[0] == team:
                 await self.vessels.get(k).destroy()
+
+    def get_key(self, team_name):
+        return self.keys.get(team_name, {}).get('key', None)
 
     def get_universe(self, name):
         m = list(u for u in self.universes if u.name == name)
