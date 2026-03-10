@@ -106,7 +106,7 @@ class Game:
 
     async def universe_update_task(self, u):
         try:
-            for _ in range(int(math.prod(u.size)/100)):
+            for _ in range(min(int(math.prod(u.size)/100), 5000)):
                 p = random_position(u)
                 Asteroid(u, p)
             for v in u.iter('vessel'):
