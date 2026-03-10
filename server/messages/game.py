@@ -6,10 +6,13 @@ MSG_START = {
     "properties": {
         "type": {
             "const": "start"
-            },
+        },
         "team": {
             "type": "string"
-            },
+        },
+        "key": {
+            "type": "string"
+        },
         "vessels": {
             "type": "array",
             "minItems": 1,
@@ -36,6 +39,9 @@ MSG_CONNECT = {
             "const": "connect"
         },
         "id": {
+            "type": "string"
+        },
+        "key": {
             "type": "string"
         },
         "required": ["type", "id"],
