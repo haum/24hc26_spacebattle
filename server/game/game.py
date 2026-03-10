@@ -138,6 +138,8 @@ class Game:
         self.tasks = {t for t in self.tasks if not t.done()}
 
     async def onMsg_start(self, data):
+        if self.keys and data.get('key', '') != self.get_key(data['team']):
+            return 'Invalid key'
         msg = {'type': 'new_vessels'}
         await self.destroy_vessels_of_team(data['team'])
         msg['vessels'] = self.add_in_lobby(data['team'], data['vessels'])
@@ -147,6 +149,8 @@ class Game:
         return msg
 
     async def onMsg_connect(self, data):
+        if self.keys and data.get('key', '') != self.get_key(data.get('id', '').split(':')[0]):
+            return 'Invalid key'
         if data.get('id', None) in self.vessels:
             return weakref.ref(self.vessels.get(data['id']))
         else:
