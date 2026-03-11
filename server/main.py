@@ -101,7 +101,7 @@ async def mainws(rq):
     rq.app[app_key_w].add(ws)
     try:
         ws.msgobj = weakref.ref(rq.app[app_key_g])
-        await ws.send_json({'type': 'hello'})
+        await ws.send_json({'type': 'hello', 'need_keys': bool(ws.msgobj().keys) })
         async for msg in ws:
             if msg.type == aiohttp.WSMsgType.TEXT:
                 try:
