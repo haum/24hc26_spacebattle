@@ -1,5 +1,6 @@
 import pytest
 
+from main import set_sender, route_message
 from game.resource import Resource
 from game.universe import Universe
 from game.vessel import Vessel, HP_LUT
@@ -15,9 +16,6 @@ async def test_harvest_regular():
     r1 = Resource(u, [0, 10], 40)
     r2 = Resource(u, [0, 11], 40)
     v.energy = 0
-
-    logger = MessageLogger()
-    v.send = logger.log
 
     await runner.run_for(1)
 
@@ -35,7 +33,7 @@ async def test_harvest_finish():
     v.energy = 0
 
     logger = MessageLogger()
-    v.send = logger.log
+    await set_sender(v, logger.log)
 
     await runner.run_for(1)
 
@@ -54,7 +52,7 @@ async def test_harvest_partial():
     v.energy = 0
 
     logger = MessageLogger()
-    v.send = logger.log
+    await set_sender(v, logger.log)
 
     await runner.run_for(1)
 
@@ -70,7 +68,7 @@ async def test_destroy_to_farmable():
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
 
     logger = MessageLogger()
-    v.send = logger.log
+    await set_sender(v, logger.log)
 
     await v.destroy()
 

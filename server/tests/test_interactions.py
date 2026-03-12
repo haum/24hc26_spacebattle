@@ -1,5 +1,6 @@
 import pytest
 
+from main import set_sender, route_message
 from game.asteroid import Asteroid
 from game.mine import Mine
 from game.torpedo import Torpedo
@@ -166,7 +167,7 @@ async def test_vessel_attacking_vessel_with_torpedo():
     hp2 = v2.hp
 
     await runner.run_for(1)
-    await v1.onMsg_fire_torpedo({'direction': [1, 0]})
+    await route_message(v1, None, {'type': 'fire_torpedo', 'direction': [1, 0]})
     await runner.run_for(1)
 
     assert u.len('torpedo') == 0
@@ -191,7 +192,7 @@ async def test_vessels_collision():
     hp2 = v2.hp
 
     await runner.run_for(1)
-    await v1.onMsg_move({'direction': [5,0]})
+    await route_message(v1, None, {'type': 'move', 'direction': [5, 0]})
     await runner.run_for(3)
 
     assert v1.hp == hp1 - 15
@@ -215,7 +216,7 @@ async def test_vessel_collision_with_asteroid():
     hp = v1.hp
 
     await runner.run_for(1)
-    await v1.onMsg_move({'direction': [-1, 0]})
+    await route_message(v1, None, {'type': 'move', 'direction': [-1, 0]})
     await runner.run_for(3)
 
     assert u.len('vessel') == 0
@@ -231,7 +232,7 @@ async def test_vessel_collision_with_mine():
     hp = v1.hp
 
     await runner.run_for(1)
-    await v1.onMsg_move({'direction': [-1, 0]})
+    await route_message(v1, None, {'type': 'move', 'direction': [-1, 0]})
     await runner.run_for(3)
 
     assert u.len('mine') == 0
@@ -267,8 +268,8 @@ async def test_vessel_drop_mine():
     radar = RadarLogger(u)
 
     await runner.run_for(1)
-    await v.onMsg_drop_mine({'delay': 0.1})
-    await v.onMsg_move({'direction': [1, 0]})
+    await route_message(v, None, {'type': 'drop_mine', 'delay': 0.1})
+    await route_message(v, None, {'type': 'move', 'direction': [1, 0]})
     await runner.run_for(1)
 
     assert u.len('mine') == 1
@@ -302,10 +303,10 @@ async def test_autodestruction():
     radar = RadarLogger(u)
 
     l2 = MessageLogger()
-    v2.send = l2.log
+    await set_sender(v2, l2.log)
 
     await runner.run_for(1)
-    await v1.onMsg_autodestruction({})
+    await route_message(v1, None, {'type': 'autodestruction'})
     await runner.run_for(1)
 
     assert u.len('vessel') == 1
@@ -327,10 +328,10 @@ async def test_autodestruction_two_vessels():
     radar = RadarLogger(u)
 
     l3 = MessageLogger()
-    v3.send = l3.log
+    await set_sender(v3, l3.log)
 
     await runner.run_for(1)
-    await v1.onMsg_autodestruction({})
+    await route_message(v1, None, {'type': 'autodestruction'})
     await runner.run_for(1)
 
     assert u.len('vessel') == 1
@@ -352,12 +353,12 @@ async def test_move_on_radar():
     v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [45, 9])
 
     l2 = MessageLogger()
-    v2.send = l2.log
+    await set_sender(v2, l2.log)
 
     await runner.run_for(1)
-    await v1.onMsg_move({'direction': [1, 1]})
+    await route_message(v1, None, {'type': 'move', 'direction': [1, 1]})
     await runner.run_for(1)
-    await v1.onMsg_move({'direction': [1, 1]})
+    await route_message(v1, None, {'type': 'move', 'direction': [1, 1]})
     await runner.run_for(1)
 
     assert len(l2) == 3
@@ -374,7 +375,7 @@ async def test_laser_attack():
     hp = v2.hp
 
     await runner.run_for(1)
-    await v1.onMsg_fire_laser({'direction': [1, 0]})
+    await route_message(v1, None, {'type': 'fire_laser', 'direction': [1, 0]})
     await runner.run_for(1)
 
     assert v2.hp == hp - 20
@@ -391,7 +392,7 @@ async def test_laser_attack_two_vessels():
     hp3 = v3.hp
 
     await runner.run_for(1)
-    await v1.onMsg_fire_laser({'direction': [1, 0]})
+    await route_message(v1, None, {'type': 'fire_laser', 'direction': [1, 0]})
     await runner.run_for(1)
 
     assert v2.hp == hp2 - 20
@@ -410,7 +411,7 @@ async def test_laser_attacking_vessel_behind_asteroid():
     hp1 = v1.hp
 
     await runner.run_for(1)
-    await v2.onMsg_fire_laser({ 'direction': [0, -1] })
+    await route_message(v2, None, {'type': 'fire_laser', 'direction': [0, -1]})
     await runner.run_for(1)
 
     assert u.len('asteroid') == 1
@@ -433,7 +434,7 @@ async def test_laser_attacking_vessel_behind_farmable():
     hp1 = v1.hp
 
     await runner.run_for(1)
-    await v2.onMsg_fire_laser({ 'direction': [0, -1] })
+    await route_message(v2, None, {'type': 'fire_laser', 'direction': [0, -1]})
     await runner.run_for(1)
 
     assert u.len('farmable') == 1
@@ -456,7 +457,7 @@ async def test_laser_attacking_vessel_behind_mine():
     hp1 = v1.hp
 
     await runner.run_for(1)
-    await v2.onMsg_fire_laser({ 'direction': [0, -1] })
+    await route_message(v2, None, {'type': 'fire_laser', 'direction': [0, -1]})
     await runner.run_for(1)
 
     assert u.len('mine') == 0
@@ -478,7 +479,7 @@ async def test_laser_attacking_vessel_behind_mine_close():
     hp1 = v1.hp
 
     await runner.run_for(1)
-    await v2.onMsg_fire_laser({ 'direction': [0, -1] })
+    await route_message(v2, None, {'type': 'fire_laser', 'direction': [0, -1]})
     await runner.run_for(1)
 
     assert u.len('mine') == 0
@@ -497,16 +498,15 @@ async def test_iem_attack():
     v2 = Vessel(u, ['T', 2, 'test'], [1, 1, 1, 1], [30, 10])
 
     l2 = MessageLogger()
-    v2.send = l2.log
-
+    await set_sender(v2, l2.log)
 
     await runner.run_for(1)
-    await v1.onMsg_fire_iem({'direction': [1, 0]})
+    await route_message(v1, None, {'type': 'fire_iem', 'direction': [1, 0]})
     await runner.run_for(1)
 
     assert v2.iemed_until > u.t
 
-    await v2.onMsg_move({'direction': [1, 0]})
+    await route_message(v2, l2.log, {'type': 'move', 'direction': [1, 0]})
     assert l2[-1] == { 'type': 'iem_freeze'}
 
 
@@ -519,18 +519,18 @@ async def test_iem_attack_two_vessels():
     v3 = Vessel(u, ['T', 3, 'test'], [1, 1, 1, 1], [32, 10])
 
     l2 = MessageLogger()
-    v2.send = l2.log
+    await set_sender(v2, l2.log)
     l3 = MessageLogger()
-    v3.send = l3.log
+    await set_sender(v3, l3.log)
 
     await runner.run_for(1)
-    await v1.onMsg_fire_iem({'direction': [1, 0]})
+    await route_message(v1, None, {'type': 'fire_iem', 'direction': [1, 0]})
     await runner.run_for(1)
 
     assert v2.iemed_until > u.t
     assert v3.iemed_until > u.t
-    await v2.onMsg_move({'direction': [1, 0]})
-    await v3.onMsg_move({'direction': [1, 0]})
+    await route_message(v2, l2.log, {'type': 'move', 'direction': [1, 0]})
+    await route_message(v3, l3.log, {'type': 'move', 'direction': [1, 0]})
     assert l2[-1] == { 'type': 'iem_freeze'}
     assert l3[-1] == { 'type': 'iem_freeze'}
 
@@ -545,10 +545,10 @@ async def test_active_scan():
     a = Asteroid(u, [20, 0])
 
     l1 = MessageLogger()
-    v1.send = l1.log
+    await set_sender(v1, l1.log)
 
     await runner.run_for(1)
-    await v1.onMsg_scan_radar({})
+    await route_message(v1, l1.log, {'type': 'scan_radar'})
     await runner.run_for(1)
 
     assert { 'type': 'active_scan', 'what': 'vessel', 'position': [10, 0]} in l1.messages
