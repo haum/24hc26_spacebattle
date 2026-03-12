@@ -12,6 +12,26 @@ from .utils import UniverseRunner, RadarLogger, MessageLogger
 
 
 @pytest.mark.asyncio
+async def test_move():
+    u = Universe('test', [50, 50])
+    runner = UniverseRunner(u)
+    v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [40, 10])
+
+    l = MessageLogger()
+    await set_sender(v, l.log)
+
+    await runner.run_for(1)
+    await route_message(v, l.log, {'type': 'move', 'direction': [-20, 0]})
+    await runner.run_for(1)
+    await route_message(v, l.log, {'type': 'move', 'direction': [-200, 0]})
+    await runner.run_for(1)
+
+    assert v.position == [40-20, 10]
+    assert l[-2] == {'type': 'passive_scan', 'what': 'move', 'vessel': 'T:1', 'movement': [-20, 0]}
+    assert l[-1] == {'type': 'move_aborded'}
+
+
+@pytest.mark.asyncio
 async def test_torpedo_death():
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
