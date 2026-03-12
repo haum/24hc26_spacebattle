@@ -64,34 +64,54 @@ def static_file(path):
     return impl
 
 
-async def send_to_obj(ws, data):
-    h = getattr(ws.msgobj(), f'onMsg_{data['type']}', None)
-    if h:
-        res = await h(data)
-    elif hasattr(ws.msgobj(), 'onUnknownMsg'):
-        res = await ws.msgobj().onUnknownMsg(data)
-
-    previous_msgobj = ws.msgobj()
-    await send_msg(ws, res)
-    if previous_msgobj is not ws.msgobj():
-        await send_to_obj(ws, data)
+async def set_sender(obj, reply, ws=None):
+    if obj and hasattr(obj, 'set_sender'):
+        await obj.set_sender(
+            functools.partial(send_replies, reply, ws=ws)
+        )
 
 
-async def send_msg(ws, data):
-    if isinstance(data, str):
-        await ws.close(message=data)
-    elif isinstance(data, dict):
-        await ws.send_json(data)
+async def send_replies(reply, data, ws=None):
+    if isinstance(data, str) or isinstance(data, dict):
+        if reply: await reply(data)
     elif isinstance(data, weakref.ReferenceType):
-        if ws.msgobj() is not data():
-            if ws.msgobj() and hasattr(ws.msgobj(), 'set_sender'):
-                await ws.msgobj().set_sender(None)
-            if data() and hasattr(data(), 'set_sender'):
-                await data().set_sender(functools.partial(send_msg, ws))
-        ws.msgobj = data
+        if ws:
+            if ws.msgobj() is not data():
+                if ws.msgobj() and hasattr(ws.msgobj(), 'set_sender'):
+                    await ws.msgobj().set_sender(None)
+                await set_sender(data(), reply, ws)
+            ws.msgobj = data
     elif data:
         for o in data:
-            await send_msg(ws, o)
+            await send_replies(reply, o, ws)
+
+
+def ws_sender(ws):
+    async def send(data):
+        if isinstance(data, str):
+            await ws.close(message=data)
+        else:
+            await ws.send_json(data)
+    return send
+
+
+async def route_message(obj, reply, data, ws=None):
+    invalid = validate_msg(data)
+    if invalid:
+        await send_replies(reply, [
+            {'type': 'invalid_msg', 'errors': invalid},
+            'Invalid message'
+        ], ws)
+        return
+
+    h = getattr(
+        obj, f'onMsg_{data['type']}',
+        getattr(obj, 'onUnknownMsg', False)
+    )
+    await send_replies(reply, await h(data) if h else [], ws)
+
+    if ws and obj is not ws.msgobj():
+        await route_message(ws.msgobj(), reply, data, ws)
 
 
 async def mainws(rq):
@@ -109,17 +129,7 @@ async def mainws(rq):
                 except json.decoder.JSONDecodeError:
                     await ws.close(message='Invalid JSON')
                     continue
-
-                inval = validate_msg(data)
-                if inval:
-                    await send_msg(ws, [
-                        {'type': 'invalid_msg', 'errors': inval},
-                        'Invalid message'
-                    ])
-                    continue
-
-                await send_to_obj(ws, data)
-
+                await route_message(ws.msgobj(), ws_sender(ws), data, ws)
             elif msg.type == aiohttp.WSMsgType.BINARY:
                 await ws.close(code=aiohttp.WSCloseCode.UNSUPPORTED_DATA)
             elif msg.type == aiohttp.WSMsgType.CLOSE:
