@@ -13,6 +13,7 @@ HP_LUT = [1, 21, 41, 61, 81, 101, 121, 146, 171, 196]
 RADAR_LUT = [10, 20, 40, 60, 80, 100, 120, 140, 170, 200]
 LASER_LUT = [_//2 for _ in RADAR_LUT]
 IEM_LUT = [int(_*1.2) for _ in RADAR_LUT]
+MOVE_LUT = [int(_*1.5) for _ in RADAR_LUT]
 
 class STATS(IntEnum):
     H = 0
@@ -137,10 +138,16 @@ class Vessel:
 
     @playing_only
     @iem_sensitive
-    @use_energy(lambda self: self.stats[STATS.S]/MAX_STAT*5)
     async def onMsg_move(self, data):
-        d = data['direction']
-        self.move = d + [0] * (len(self.u.size) - len(d))
+        d = vector.autodim(data['direction'], self.u.size, False)
+        dlen = vector.norm(d)
+        dmax = MOVE_LUT[self.stats[STATS.S]]
+        energy = min(dlen/dmax * ENERGY.move, ENERGY.move)
+        if await self.spend_energy(energy):
+            if dlen <= dmax:
+                self.move = d
+            else:
+                return {'type': 'move_aborded'}
 
     @playing_only
     @iem_sensitive
