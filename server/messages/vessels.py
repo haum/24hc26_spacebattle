@@ -65,6 +65,24 @@ MSG_FIRE_LASER = {
     "additionalProperties": False
 }
 
+MSG_FIRE_IEM = {
+    "properties": {
+        "type": {
+            "const": "fire_iem"
+        },
+        "direction": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 4,
+            "items": {
+                "type": "number",
+            }
+        },
+    },
+    "required": ["type", "direction"],
+    "additionalProperties": False
+}
+
 MSG_SCAN_RADAR = {
     "properties": {
         "type": {

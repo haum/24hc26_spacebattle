@@ -14,6 +14,7 @@ from .vessels import (
     MSG_FIRE_TORPEDO,
     MSG_DROP_MINE,
     MSG_FIRE_LASER,
+    MSG_FIRE_IEM,
     MSG_SCAN_RADAR,
     MSG_AUTODESTRUCTION,
 )
@@ -35,6 +36,7 @@ validators = dict(map(
         ('fire_torpedo', MSG_FIRE_TORPEDO),
         ('drop_mine', MSG_DROP_MINE),
         ('fire_laser', MSG_FIRE_LASER),
+        ('fire_iem', MSG_FIRE_IEM),
         ('scan_radar', MSG_SCAN_RADAR),
         ('autodestruction', MSG_AUTODESTRUCTION),
         ('ping', MSG_PING),
