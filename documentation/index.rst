@@ -4,5 +4,6 @@
 .. toctree::
    :maxdepth: 2
 
-   idee.rst
+   guide_participants.rst
    protocole.rst
+   idee.rst
