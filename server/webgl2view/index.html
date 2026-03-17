@@ -64,7 +64,7 @@
 
     #zoom-hint {
       position: absolute;
-      bottom: 16px; right: 16px;
+      bottom: 16px; right: 120px;
       color: #445566;
       font-size: 11px;
       line-height: 1.8;
@@ -72,43 +72,27 @@
       pointer-events: none;
     }
 
-    #btn-reset {
+    #controls {
       position: absolute;
-      bottom: 100px; right: 16px;
+      bottom: 16px; right: 16px;
+      display: flex; flex-direction: column; gap: 8px; align-items: stretch;
       pointer-events: all;
+    }
+    #controls button {
       background: #0d1320cc;
       border: 1px solid #2a4060;
       border-radius: 6px;
       color: #7fd4ff;
-      font-family: inherit;
-      font-size: 12px;
-      padding: 5px 10px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    #btn-reset:hover { background: #1a3a60cc; }
-
-    #btn-trails {
-      position: absolute;
-      bottom: 140px; right: 16px;
-      pointer-events: all;
-      background: #0d1320cc;
-      border: 1px solid #2a4060;
-      border-radius: 6px;
-      color: #556677;
       font-family: inherit;
       font-size: 12px;
       padding: 5px 10px;
       cursor: pointer;
       transition: background 0.2s, color 0.2s, border-color 0.2s;
-      display: none;
+      white-space: nowrap;
     }
-    #btn-trails.active {
-      color: #7fd4ff;
-      border-color: #4080b0;
-      background: #1a3a60cc;
-    }
-    #btn-trails:hover { background: #1a3a60cc; }
+    #controls button:hover { background: #1a3a60cc; }
+    #btn-trails { color: #556677; }
+    #btn-trails.active { color: #7fd4ff; border-color: #4080b0; background: #1a3a60cc; }
 
     #status-bar {
       position: absolute;
@@ -225,8 +209,10 @@
     <span id="hint-3d" style="display:none">Molette : zoom &nbsp;|&nbsp; Clic gauche : pan<br>Clic droit : orbite &nbsp;|&nbsp; Double-clic : réinitialiser</span>
   </div>
 
-  <button id="btn-reset">⟳ Réinitialiser vue</button>
-  <button id="btn-trails">⟿ Tracés</button>
+  <div id="controls">
+    <button id="btn-trails">⟿ Tracés</button>
+    <button id="btn-reset">⟳ Réinitialiser vue</button>
+  </div>
 </div>
 
 <div id="dialog-overlay">
