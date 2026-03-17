@@ -64,9 +64,12 @@ de vos vaisseaux :
 
    < {"type": "new_vessels", "vessels": ["Equipe:1:xKpQa", "Equipe:2:mNrTs"]}
 
-.. note::
+.. warning::
 
    Ces identifiants contiennent un token secret. **Ne les partagez pas.**
+
+.. note::
+
    Si vous renvoyez un message ``start``, votre ancienne flotte est détruite.
 
 Contraintes sur la flotte :
@@ -86,6 +89,10 @@ Ouvrez **une connexion WebSocket par vaisseau** et envoyez :
 
    > {"type": "connect", "id": "Equipe:1:xKpQa"}
 
+.. note::
+
+   Évidemment, adaptez l'``id`` avec les identifiants renvoyés par le message ``new_vessels``.
+
 Le serveur répond avec les statistiques effectives du vaisseau :
 
 .. code-block::
@@ -101,8 +108,9 @@ lobby depuis 5 secondes) :
 
 .. note::
 
-   Si vous vous connectez à un vaisseau en cours de partie, ``start_battle``
-   est envoyé immédiatement à la connexion.
+   Si vous vous connectez à un vaisseau après le début d'une partie, le message
+   ``start_battle`` est envoyé à la connexion pour vous informer que la partie
+   est en cours.
 
 
 .. _stats:
@@ -129,12 +137,13 @@ La somme cumulée de toutes les stats de votre flotte ne doit pas dépasser **30
      - Augmente la portée des armes (torpille, laser, IEM).
    * - S
      - Vitesse
-     - Augmente la distance maximale parcourue à chaque déplacement.
+     - Augmente la distance maximale qui peut être parcourue à chaque commande
+       de déplacement.
    * - R
      - Radar
      - Augmente le rayon de détection du radar actif et passif.
 
-Il n'y a pas de bonne ou mauvaise répartition : à vous de trouver l'équilibre
+Il n'y a pas de bonne ou mauvaise répartition : à vous de choisir l'équilibre
 qui correspond à votre stratégie.
 
 
@@ -202,6 +211,8 @@ de la même dimension que l'univers.
    déplacement (déterminée par la stat **S**). Si le déplacement est trop
    grand, le serveur renvoie ``{"type": "move_aborded"}``.
 
+.. note::
+
    Les autres vaisseaux reçoivent un signal ``passive_scan`` contenant votre
    déplacement s'ils sont à portée de radar.
 
@@ -224,10 +235,9 @@ Pose une mine à votre position actuelle.
 
 .. code-block::
 
-   > {"type": "drop_mine"}
    > {"type": "drop_mine", "delay": 3.0}
 
-Le paramètre ``delay`` (optionnel) définit le temps en secondes avant que la
+Le paramètre ``delay`` définit le temps en secondes avant que la
 mine ne soit armée. Une mine détruite provoque une explosion qui peut faire
 réagir les mines voisines en chaîne.
 
