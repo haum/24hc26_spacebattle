@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>24hc26 — WebGL2 View</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100vw; height: 100vh;
+      overflow: hidden;
+      background: #0a0a12;
+      font-family: 'Courier New', monospace;
+    }
+
+    canvas#gl {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: block;
+    }
+
+    /* ── HUD overlay ────────────────────────────────────────── */
+    #hud {
+      position: absolute; inset: 0;
+      pointer-events: none;
+    }
+
+    #info-panel {
+      position: absolute;
+      top: 16px; left: 16px;
+      color: #c8d8f0;
+      font-size: 13px;
+      line-height: 1.7;
+      text-shadow: 0 0 6px #000a;
+    }
+    #info-panel span { color: #7fd4ff; }
+
+    #tooltip {
+      position: absolute;
+      background: #0d1320dd;
+      border: 1px solid #2a4060;
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: #c8d8f0;
+      font-size: 12px;
+      line-height: 1.8;
+      pointer-events: none;
+      display: none;
+      max-width: 220px;
+    }
+    #tooltip .tt-title { color: #7fd4ff; font-weight: bold; margin-bottom: 2px; }
+
+    #legend {
+      position: absolute;
+      bottom: 16px; left: 16px;
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .leg { display: flex; align-items: center; gap: 8px; color: #9ab; font-size: 12px; }
+    .leg-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    #status-bar {
+      position: absolute;
+      top: 16px; right: 16px;
+      display: flex; align-items: center; gap: 8px;
+      color: #9ab; font-size: 12px;
+    }
+    #conn-indicator {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #f44; box-shadow: 0 0 6px #f44;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    #conn-indicator.connected { background: #4f4; box-shadow: 0 0 8px #4f4; }
+
+    /* ── Connection dialog ──────────────────────────────────── */
+    #dialog-overlay {
+      position: absolute; inset: 0;
+      background: #0a0a12cc;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    #dialog {
+      background: #0d1320;
+      border: 1px solid #2a4060;
+      border-radius: 12px;
+      padding: 32px 40px;
+      width: 380px;
+      color: #c8d8f0;
+    }
+    #dialog h2 { margin-bottom: 20px; font-size: 18px; color: #7fd4ff; }
+    #dialog label { display: block; margin-bottom: 4px; font-size: 12px; color: #9ab; }
+    #dialog input {
+      width: 100%; padding: 8px 10px;
+      background: #0a0a12; border: 1px solid #2a4060;
+      border-radius: 6px; color: #c8d8f0;
+      font-family: inherit; font-size: 14px;
+      margin-bottom: 14px;
+      outline: none;
+    }
+    #dialog input:focus { border-color: #7fd4ff; }
+    #dialog button {
+      width: 100%; padding: 10px;
+      background: #1a3a60; border: 1px solid #2a5080;
+      border-radius: 6px; color: #7fd4ff;
+      font-family: inherit; font-size: 14px;
+      cursor: pointer; transition: background 0.2s;
+    }
+    #dialog button:hover { background: #1e4878; }
+    #dialog-error { color: #f88; font-size: 12px; min-height: 18px; margin-top: -8px; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+
+<div id="hud">
+  <div id="info-panel">
+    <div>Univers&nbsp;: <span id="info-universe">—</span></div>
+    <div>Grille&nbsp;&nbsp;: <span id="info-size">—</span></div>
+    <div>Vaisseaux : <span id="info-vessels">0</span></div>
+    <div>Curseur&nbsp;: <span id="info-cursor">—</span></div>
+  </div>
+
+  <div id="status-bar">
+    <div id="conn-indicator"></div>
+    <span id="conn-label">Déconnecté</span>
+  </div>
+
+  <div id="tooltip"></div>
+
+  <div id="legend">
+    <div class="leg"><div class="leg-dot" style="background:#b04010;border-radius:3px"></div>Astéroïde</div>
+    <div class="leg"><div class="leg-dot" style="background:#ffe040"></div>Vaisseau</div>
+    <div class="leg"><div class="leg-dot" style="background:#ff4040"></div>Torpille</div>
+    <div class="leg"><div class="leg-dot" style="background:#c020c0"></div>Mine</div>
+    <div class="leg"><div class="leg-dot" style="background:#20d080"></div>Ressource</div>
+  </div>
+</div>
+
+<div id="dialog-overlay">
+  <div id="dialog">
+    <h2>24hc26 — Observer</h2>
+    <label>Univers</label>
+    <input id="inp-universe" type="text" placeholder="(vide = lobby)" />
+    <label>Clé admin <span style="color:#556">(optionnel)</span></label>
+    <input id="inp-key" type="password" placeholder="admin key" />
+    <div id="dialog-error"></div>
+    <button id="btn-connect">Connecter</button>
+  </div>
+</div>
+
+<script type="module">
+// ═══════════════════════════════════════════════════════════
+//  Utility
+// ═══════════════════════════════════════════════════════════
+function el(id) { return document.getElementById(id); }
+
+// ═══════════════════════════════════════════════════════════
+//  WebGL2 setup
+// ═══════════════════════════════════════════════════════════
+const canvas = el('gl');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
+if (!gl) { alert('WebGL2 non supporté par ce navigateur.'); }
+
+// ── Shaders ─────────────────────────────────────────────────
+
+// Each object is drawn as an instanced quad (2 triangles).
+// Per-instance attributes: position (vec2) + kind (float).
+//
+// kinds:
+//   0 = asteroid   1 = vessel   2 = torpedo   3 = mine   4 = resource
+//
+const VS = `#version 300 es
+precision highp float;
+
+// Unit quad corners (triangle-strip order, as 2 triangles)
+const vec2 CORNERS[6] = vec2[6](
+  vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(0.0, 1.0),
+  vec2(1.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 1.0)
+);
+
+// Per-instance
+layout(location=0) in vec2  aGridPos;   // integer grid cell
+layout(location=1) in float aKind;      // 0..4
+layout(location=2) in float aAlpha;     // 0..1  (for fade effects)
+
+uniform vec2  uGridSize;   // e.g. [50, 50]
+uniform vec2  uViewport;   // canvas pixel size
+uniform float uCell;       // pixel size of one cell
+
+out float vKind;
+out float vAlpha;
+out vec2  vUV;             // 0..1 within the cell
+
+void main() {
+  vec2 corner = CORNERS[gl_VertexID];
+  vUV   = corner;
+  vKind  = aKind;
+  vAlpha = aAlpha;
+
+  // Grid origin so the grid is centred in the viewport
+  vec2 orig = (uViewport - uGridSize * uCell) * 0.5;
+
+  vec2 pixelPos = orig + (aGridPos + corner) * uCell;
+
+  // NDC: y-flip (WebGL y=0 is bottom)
+  vec2 ndc = (pixelPos / uViewport) * 2.0 - 1.0;
+  ndc.y = -ndc.y;
+
+  gl_Position = vec4(ndc, 0.0, 1.0);
+}
+`;
+
+const FS = `#version 300 es
+precision highp float;
+
+in float vKind;
+in float vAlpha;
+in vec2  vUV;   // 0..1 in cell
+
+out vec4 fragColor;
+
+// Signed-distance to a circle centred at 0.5,0.5, radius r
+float sdCircle(vec2 uv, float r) {
+  return length(uv - 0.5) - r;
+}
+
+// Signed-distance to a diamond (||uv-0.5||_1 - r)
+float sdDiamond(vec2 uv, float r) {
+  vec2 d = abs(uv - 0.5);
+  return (d.x + d.y) - r;
+}
+
+// Signed-distance to a rounded square
+float sdRoundedBox(vec2 uv, float half, float radius) {
+  vec2 d = abs(uv - 0.5) - half + radius;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - radius;
+}
+
+// Soft anti-aliased edge
+float fill(float d, float aa) {
+  return 1.0 - smoothstep(-aa, aa, d);
+}
+
+void main() {
+  float aa = 0.03; // anti-alias width in UV space
+  int   k  = int(vKind + 0.5);
+
+  vec3  col;
+  float alpha;
+
+  if (k == 0) {
+    // ── Asteroid: brown rounded square ───────────────────
+    float d = sdRoundedBox(vUV, 0.38, 0.12);
+    alpha = fill(d, aa);
+    col   = vec3(0.69, 0.25, 0.06);
+    // darker inner crack pattern
+    float crack = abs(sin((vUV.x - vUV.y) * 12.0)) * 0.15;
+    col -= crack;
+
+  } else if (k == 1) {
+    // ── Vessel: bright circle with glow ring ─────────────
+    float d     = sdCircle(vUV, 0.28);
+    float dRing = sdCircle(vUV, 0.38);
+    float body  = fill(d, aa);
+    float ring  = fill(dRing, aa) * (1.0 - body) * 0.45;
+    alpha = body + ring;
+    col   = mix(vec3(1.0, 0.82, 0.18), vec3(1.0, 0.95, 0.55), 1.0 - length(vUV-0.5)*2.0);
+
+  } else if (k == 2) {
+    // ── Torpedo: thin elongated diamond ──────────────────
+    vec2 uv2 = vUV;
+    // squash vertically to make it elongated
+    uv2.y = (uv2.y - 0.5) * 2.2 + 0.5;
+    float d = sdDiamond(uv2, 0.28);
+    alpha = fill(d, aa * 1.5);
+    col   = vec3(1.0, 0.22, 0.18);
+
+  } else if (k == 3) {
+    // ── Mine: magenta octagon-ish (cross of two rects) ───
+    vec2 uv2 = vUV - 0.5;
+    float sq1 = sdRoundedBox(vUV, 0.22, 0.04);
+    vec2  rot = vec2(uv2.x*0.707 - uv2.y*0.707,
+                      uv2.x*0.707 + uv2.y*0.707) + 0.5;
+    float sq2 = sdRoundedBox(rot,  0.22, 0.04);
+    float d   = min(sq1, sq2);
+    alpha = fill(d, aa);
+    col   = vec3(0.78, 0.12, 0.82);
+
+  } else {
+    // ── Resource (k==4): green pulsing disc ──────────────
+    float d = sdCircle(vUV, 0.32);
+    alpha = fill(d, aa) * mix(0.6, 1.0, vAlpha);
+    col   = vec3(0.10, 0.82, 0.48);
+  }
+
+  fragColor = vec4(col, alpha * vAlpha);
+}
+`;
+
+// ── Compile helpers ──────────────────────────────────────────
+function compileShader(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+    throw new Error('Shader error:\n' + gl.getShaderInfoLog(s));
+  return s;
+}
+function buildProgram(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compileShader(gl.VERTEX_SHADER,   vs));
+  gl.attachShader(p, compileShader(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+    throw new Error('Program link error:\n' + gl.getProgramInfoLog(p));
+  return p;
+}
+
+const prog = buildProgram(VS, FS);
+const uGridSize = gl.getUniformLocation(prog, 'uGridSize');
+const uViewport = gl.getUniformLocation(prog, 'uViewport');
+const uCell     = gl.getUniformLocation(prog, 'uCell');
+
+// ── Instanced buffer layout ──────────────────────────────────
+// Float32 per instance: [ gridX, gridY, kind, alpha ]   → 4 floats = 16 bytes
+const FLOATS_PER_INST = 4;
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+
+const instBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+
+// aGridPos  (location 0) → 2 floats
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, FLOATS_PER_INST * 4, 0);
+gl.vertexAttribDivisor(0, 1);
+
+// aKind  (location 1) → 1 float
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 1, gl.FLOAT, false, FLOATS_PER_INST * 4, 8);
+gl.vertexAttribDivisor(1, 1);
+
+// aAlpha (location 2) → 1 float
+gl.enableVertexAttribArray(2);
+gl.vertexAttribPointer(2, 1, gl.FLOAT, false, FLOATS_PER_INST * 4, 12);
+gl.vertexAttribDivisor(2, 1);
+
+gl.bindVertexArray(null);
+
+// ── Background (full-screen quad, separate simple program) ──
+const BG_VS = `#version 300 es
+precision highp float;
+const vec2 P[3] = vec2[3](vec2(-1,-1),vec2(3,-1),vec2(-1,3));
+void main() { gl_Position = vec4(P[gl_VertexID],0,1); }`;
+
+const BG_FS = `#version 300 es
+precision highp float;
+uniform vec2 uRes;
+out vec4 fragColor;
+void main(){
+  vec2 uv = gl_FragCoord.xy / uRes;
+  // deep space gradient
+  vec3 col = mix(vec3(0.04,0.04,0.10), vec3(0.06,0.08,0.16), uv.y);
+  // subtle star noise
+  float n = fract(sin(dot(floor(gl_FragCoord.xy / 2.0),
+                          vec2(127.1, 311.7))) * 43758.5453);
+  if (n > 0.993) col += vec3(0.5 + 0.5*n) * 0.9;
+  fragColor = vec4(col, 1.0);
+}`;
+
+const bgProg  = buildProgram(BG_VS, BG_FS);
+const bgVao   = gl.createVertexArray(); // empty VAO for attributeless draw
+const bgURes  = gl.getUniformLocation(bgProg, 'uRes');
+
+// ── Grid-border program ──────────────────────────────────────
+// Draws 4 border lines as a line-loop using a geometry computed on the GPU.
+const BORDER_VS = `#version 300 es
+precision highp float;
+// 5 vertices for a line-loop (0=TL, 1=TR, 2=BR, 3=BL, 4=TL again)
+const vec2 CORNERS[5] = vec2[5](
+  vec2(0,0), vec2(1,0), vec2(1,1), vec2(0,1), vec2(0,0)
+);
+uniform vec2 uGridSize;
+uniform vec2 uViewport;
+uniform float uCell;
+void main(){
+  vec2 orig = (uViewport - uGridSize * uCell) * 0.5;
+  vec2 px   = orig + CORNERS[gl_VertexID] * uGridSize * uCell;
+  vec2 ndc  = (px / uViewport) * 2.0 - 1.0;
+  ndc.y = -ndc.y;
+  gl_Position = vec4(ndc, 0.0, 1.0);
+}`;
+const BORDER_FS = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+void main(){ fragColor = vec4(0.3, 0.5, 0.7, 0.6); }`;
+
+const borderProg        = buildProgram(BORDER_VS, BORDER_FS);
+const borderVao         = gl.createVertexArray();
+const borderUGridSize   = gl.getUniformLocation(borderProg, 'uGridSize');
+const borderUViewport   = gl.getUniformLocation(borderProg, 'uViewport');
+const borderUCell       = gl.getUniformLocation(borderProg, 'uCell');
+
+// ═══════════════════════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════════════════════
+let objs       = {};          // latest world_report
+let instData   = new Float32Array(0);
+let instCount  = 0;
+let needUpload = false;
+
+// Animation time for alpha pulses
+let animT = 0;
+let lastRAF = 0;
+
+// ── Team → colour index (for vessel tinting via alpha encoding) ─
+// We keep it simple: all vessels same yellow. Could extend.
+
+// ── Kind constants ───────────────────────────────────────────
+const KIND = { asteroid: 0, vessel: 1, torpedo: 2, mine: 3, resource: 4 };
+
+// ═══════════════════════════════════════════════════════════
+//  Build instance buffer from world_report
+// ═══════════════════════════════════════════════════════════
+function buildInstances(t) {
+  const rows = [];
+  const pulse = 0.5 + 0.5 * Math.sin(t * 2.5);   // 0..1  for resources
+
+  if (objs.asteroids) {
+    for (const p of objs.asteroids)
+      rows.push(p[0], p[1], KIND.asteroid, 1.0);
+  }
+  if (objs.vessels) {
+    for (const [, p] of objs.vessels)
+      rows.push(p[0], p[1], KIND.vessel, 1.0);
+  }
+  if (objs.torpedos) {
+    for (const [, p] of objs.torpedos)
+      rows.push(p[0], p[1], KIND.torpedo, 1.0);
+  }
+  if (objs.mines) {
+    for (const [, p] of objs.mines)
+      rows.push(p[0], p[1], KIND.mine, 1.0);
+  }
+  if (objs.farmables) {
+    for (const [, p] of objs.farmables)
+      rows.push(p[0], p[1], KIND.resource, pulse);
+  }
+
+  instData  = new Float32Array(rows);
+  instCount = rows.length / FLOATS_PER_INST;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Resize
+// ═══════════════════════════════════════════════════════════
+function resize() {
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  canvas.width  = Math.floor(canvas.clientWidth  * dpr);
+  canvas.height = Math.floor(canvas.clientHeight * dpr);
+}
+window.addEventListener('resize', () => { resize(); });
+resize();
+
+// ═══════════════════════════════════════════════════════════
+//  Render loop
+// ═══════════════════════════════════════════════════════════
+function render(ts) {
+  requestAnimationFrame(render);
+
+  const dt = (ts - lastRAF) / 1000;
+  lastRAF  = ts;
+  animT   += dt;
+
+  const W = canvas.width, H = canvas.height;
+  gl.viewport(0, 0, W, H);
+
+  // ── Background ──────────────────────────────────────────
+  gl.useProgram(bgProg);
+  gl.bindVertexArray(bgVao);
+  gl.uniform2f(bgURes, W, H);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  const gridSz = objs?.size ?? [50, 50];
+  const cell   = Math.min(W / (gridSz[0] + 1), H / (gridSz[1] + 1));
+
+  // ── Border ──────────────────────────────────────────────
+  gl.useProgram(borderProg);
+  gl.bindVertexArray(borderVao);
+  gl.uniform2f(borderUGridSize, gridSz[0], gridSz[1]);
+  gl.uniform2f(borderUViewport, W, H);
+  gl.uniform1f(borderUCell,     cell);
+  gl.drawArrays(gl.LINE_STRIP, 0, 5);
+
+  // ── Instances ───────────────────────────────────────────
+  buildInstances(animT);   // rebuilds every frame (cheap for typical counts)
+
+  if (instCount > 0) {
+    gl.useProgram(prog);
+    gl.bindVertexArray(vao);
+    gl.uniform2f(uGridSize, gridSz[0], gridSz[1]);
+    gl.uniform2f(uViewport, W, H);
+    gl.uniform1f(uCell,     cell);
+
+    // Upload instance data
+    gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, instData, gl.DYNAMIC_DRAW);
+
+    // Blending for alpha shapes
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, instCount);
+    gl.disable(gl.BLEND);
+  }
+
+  // ── HUD: disconnected tint (2D overlay via CSS is handled separately) ──
+}
+requestAnimationFrame(render);
+
+// ═══════════════════════════════════════════════════════════
+//  Mouse hover → tooltip
+// ═══════════════════════════════════════════════════════════
+const tooltip   = el('tooltip');
+const infoCursor = el('info-cursor');
+
+canvas.addEventListener('mousemove', e => {
+  const dpr    = Math.max(1, window.devicePixelRatio || 1);
+  const rect   = canvas.getBoundingClientRect();
+  const gridSz = objs?.size ?? [50, 50];
+  const W      = canvas.width, H = canvas.height;
+  const cell   = Math.min(W / (gridSz[0] + 1), H / (gridSz[1] + 1));
+  const origX  = (W - gridSz[0] * cell) / 2;
+  const origY  = (H - gridSz[1] * cell) / 2;
+
+  const px = (e.clientX - rect.left) * dpr;
+  const py = (e.clientY - rect.top)  * dpr;
+
+  const gx = Math.floor((px - origX) / cell);
+  const gy = Math.floor((py - origY) / cell);
+
+  if (gx < 0 || gy < 0 || gx >= gridSz[0] || gy >= gridSz[1]) {
+    infoCursor.textContent = '—';
+    tooltip.style.display  = 'none';
+    return;
+  }
+
+  infoCursor.textContent = `(${gx}, ${gy})`;
+
+  // Gather objects at this cell
+  const lines = [];
+  if (objs.asteroids?.some(p => p[0]===gx && p[1]===gy))
+    lines.push('<span class="tt-title">Astéroïde</span>');
+  (objs.vessels ?? []).filter(([,p])=>p[0]===gx&&p[1]===gy)
+    .forEach(([name])=> lines.push(`<span class="tt-title">Vaisseau</span> ${name}`));
+  (objs.torpedos ?? []).filter(([,p])=>p[0]===gx&&p[1]===gy)
+    .forEach(([name])=> lines.push(`<span class="tt-title">Torpille</span> ${name||'?'}`));
+  (objs.mines ?? []).filter(([,p])=>p[0]===gx&&p[1]===gy)
+    .forEach(([name])=> lines.push(`<span class="tt-title">Mine</span> ${name||'?'}`));
+  (objs.farmables ?? []).filter(([,p])=>p[0]===gx&&p[1]===gy)
+    .forEach(()=> lines.push(`<span class="tt-title">Ressource</span>`));
+
+  if (lines.length) {
+    tooltip.innerHTML       = lines.join('<br>');
+    tooltip.style.display   = 'block';
+    // Position near cursor, keep inside viewport
+    const tx = Math.min(e.clientX + 14, window.innerWidth  - 240);
+    const ty = Math.min(e.clientY + 14, window.innerHeight - 120);
+    tooltip.style.left = tx + 'px';
+    tooltip.style.top  = ty + 'px';
+  } else {
+    tooltip.style.display = 'none';
+  }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  infoCursor.textContent = '—';
+  tooltip.style.display  = 'none';
+});
+
+// ═══════════════════════════════════════════════════════════
+//  WebSocket
+// ═══════════════════════════════════════════════════════════
+const connIndicator = el('conn-indicator');
+const connLabel     = el('conn-label');
+
+function setConnected(v) {
+  connIndicator.className = v ? 'connected' : '';
+  connLabel.textContent   = v ? 'Connecté' : 'Déconnecté';
+  // red tint overlay via background of hud when disconnected
+  el('hud').style.background = v ? '' : '#ff000011';
+}
+setConnected(false);
+
+let ws = null;
+
+function connect(universe, key) {
+  if (ws) { ws.onclose = null; ws.close(); }
+
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+  ws.onopen = () => {
+    setConnected(true);
+  };
+
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+
+    if (msg.type === 'hello') {
+      const rq = { type: 'rq_world_report', universe, dt: 0.1 };
+      if (key) rq.key = key;
+      ws.send(JSON.stringify(rq));
+
+    } else if (msg.type === 'world_report') {
+      objs = msg;
+      // Update HUD panels
+      el('info-universe').textContent = universe || '(lobby)';
+      el('info-size').textContent     = (msg.size ?? []).join(' × ');
+      el('info-vessels').textContent  = (msg.vessels ?? []).length;
+
+    } else {
+      console.warn('Unknown message:', msg);
+    }
+  };
+
+  ws.onclose = e => {
+    setConnected(false);
+    connLabel.textContent = `Déconnecté — ${e.reason || 'connexion perdue'}`;
+    ws = null;
+  };
+
+  ws.onerror = () => {
+    setConnected(false);
+  };
+}
+
+// ─── Dialog ─────────────────────────────────────────────────
+const overlay = el('dialog-overlay');
+const btnConn = el('btn-connect');
+const errMsg  = el('dialog-error');
+
+btnConn.addEventListener('click', () => {
+  const universe = el('inp-universe').value.trim();
+  const key      = el('inp-key').value.trim();
+  errMsg.textContent = '';
+  overlay.style.display = 'none';
+  connect(universe, key);
+});
+
+el('inp-key').addEventListener('keydown', e => {
+  if (e.key === 'Enter') btnConn.click();
+});
+el('inp-universe').addEventListener('keydown', e => {
+  if (e.key === 'Enter') btnConn.click();
+});
+
+// Auto-focus
+el('inp-universe').focus();
+</script>
+</body>
+</html>
