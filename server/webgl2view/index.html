@@ -701,23 +701,36 @@ function buildMeshVAO(mesh, instBuf3D) {
 }
 
 // Build meshes
+// Compute the bounding radius of a mesh (max distance from origin of any vertex)
+function meshBoundingRadius(mesh) {
+  let r = 0;
+  for (let i = 0; i < mesh.verts.length; i += 6)
+    r = Math.max(r, Math.hypot(mesh.verts[i], mesh.verts[i+1], mesh.verts[i+2]));
+  return r;
+}
+
+// Visual fill factor: how much of the cell each object type should occupy (0..1)
+const FILL = { asteroid: 0.46, vessel: 0.36, torpedo: 0.28, mine: 0.38, resource: 0.32 };
+
 const meshData = [
   // 0 asteroid
-  (() => { const m=makeSphere(10,14,(t,p)=>{ let r=1; const h=Math.sin(t*3.1+p*2.3); r+=h*0.18; return r; }); return { m, color:[0.69,0.25,0.06], scale:0.38, rotZ:0 }; })(),
+  (() => { const m=makeSphere(10,14,(t,p)=>{ let r=1; const h=Math.sin(t*3.1+p*2.3); r+=h*0.18; return r; }); return { m, color:[0.69,0.25,0.06], fill:FILL.asteroid, rotZ:0 }; })(),
   // 1 vessel — cone
-  (() => { const m=makeCone(12,0.8,0.32,0.35); return { m, color:[1.0,0.82,0.18], scale:0.42, rotZ:0 }; })(),
+  (() => { const m=makeCone(12,0.8,0.32,0.35); return { m, color:[1.0,0.82,0.18], fill:FILL.vessel, rotZ:0 }; })(),
   // 2 torpedo — capsule
-  (() => { const m=makeCapsule(6,10,0.38,0.14); return { m, color:[1.0,0.22,0.18], scale:0.36, rotZ:0 }; })(),
+  (() => { const m=makeCapsule(6,10,0.38,0.14); return { m, color:[1.0,0.22,0.18], fill:FILL.torpedo, rotZ:0 }; })(),
   // 3 mine — sphere with spikes
-  (() => { const m=makeSpherWithSpikes(8,12,6,0.32); return { m, color:[0.78,0.12,0.82], scale:0.38, rotZ:0 }; })(),
+  (() => { const m=makeSpherWithSpikes(8,12,6,0.32); return { m, color:[0.78,0.12,0.82], fill:FILL.mine, rotZ:0 }; })(),
   // 4 resource — octahedron
-  (() => { const m=makeOctahedron(); return { m, color:[0.10,0.82,0.48], scale:0.38, rotZ:0 }; })(),
+  (() => { const m=makeOctahedron(); return { m, color:[0.10,0.82,0.48], fill:FILL.resource, rotZ:0 }; })(),
 ];
 
-const meshObjs = meshData.map(({m,color,scale,rotZ}, i) => ({
-  ...buildMeshVAO(m, instBufs3D[i]),
-  color, scale, rotZ,
-}));
+const meshObjs = meshData.map(({m, color, fill, rotZ}, i) => {
+  // Normalise: scale so that bounding radius == fill (in cell units)
+  const br = meshBoundingRadius(m);
+  const scale = fill / br;   // uScale will be multiplied by cell in the render loop
+  return { ...buildMeshVAO(m, instBufs3D[i]), color, scale, rotZ };
+});
 
 // ═══════════════════════════════════════════════════════════
 //  Background (full-screen nebula + stars)
