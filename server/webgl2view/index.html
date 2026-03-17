@@ -141,56 +141,50 @@
     #dialog button:hover { background: #1e4878; }
     #dialog-error { color: #f88; font-size: 12px; min-height: 18px; margin-top: -8px; margin-bottom: 10px; }
 
-    /* ── End-of-game overlay ────────────────────────────────── */
-    #endgame-overlay {
-      position: absolute; inset: 0;
+    /* ── End-of-game banner ─────────────────────────────────── */
+    #endgame-banner {
+      position: absolute;
+      top: 0; left: 0; right: 0;
       display: none;
-      align-items: center; justify-content: center;
-      background: #00000088;
-      backdrop-filter: blur(6px);
-      animation: fadeIn 0.6s ease;
+      align-items: center; justify-content: center; gap: 16px;
+      padding: 10px 20px;
+      background: #0d1320dd;
+      border-bottom: 1px solid #2a4060;
+      pointer-events: none;
+      animation: slideDown 0.4s ease;
     }
-    #endgame-overlay.visible { display: flex; }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to   { opacity: 1; transform: scale(1); }
-    }
-    #endgame-box {
-      text-align: center;
-      padding: 48px 56px;
-      background: #0a0e1a;
-      border-radius: 16px;
-      border: 1px solid #2a4060;
-      box-shadow: 0 0 60px #0008;
+    #endgame-banner.visible { display: flex; pointer-events: all; }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-100%); }
+      to   { opacity: 1; transform: translateY(0); }
     }
     #endgame-icon {
-      font-size: 64px;
-      margin-bottom: 12px;
-      display: block;
+      font-size: 24px;
       animation: pulse 1.5s ease infinite;
+      flex-shrink: 0;
     }
     @keyframes pulse {
       0%, 100% { transform: scale(1);    opacity: 1; }
-      50%       { transform: scale(1.08); opacity: 0.8; }
+      50%       { transform: scale(1.12); opacity: 0.8; }
     }
     #endgame-title {
-      font-size: 32px;
+      font-size: 15px;
       font-weight: bold;
-      letter-spacing: 4px;
+      letter-spacing: 2px;
       text-transform: uppercase;
-      margin-bottom: 10px;
     }
     #endgame-subtitle {
-      font-size: 14px;
+      font-size: 13px;
       color: #7fd4ff;
-      margin-bottom: 28px;
     }
     #endgame-btn {
-      padding: 10px 28px;
+      margin-left: auto;
+      padding: 6px 18px;
       background: #1a3a60; border: 1px solid #2a5080;
-      border-radius: 8px; color: #7fd4ff;
-      font-family: inherit; font-size: 14px;
+      border-radius: 6px; color: #7fd4ff;
+      font-family: inherit; font-size: 12px;
       cursor: pointer; transition: background 0.2s;
+      flex-shrink: 0;
     }
     #endgame-btn:hover { background: #1e4878; }
   </style>
@@ -243,13 +237,11 @@
   </div>
 </div>
 
-<div id="endgame-overlay">
-  <div id="endgame-box">
-    <span id="endgame-icon">🏆</span>
-    <div id="endgame-title">Fin de partie</div>
-    <div id="endgame-subtitle" id="endgame-subtitle">—</div>
-    <button id="endgame-btn">Nouvelle partie</button>
-  </div>
+<div id="endgame-banner">
+  <span id="endgame-icon">🏁</span>
+  <div id="endgame-title">Fin de partie</div>
+  <div id="endgame-subtitle">—</div>
+  <button id="endgame-btn">Nouvelle partie</button>
 </div>
 
 <script type="module">
@@ -782,7 +774,7 @@ canvas.addEventListener('mouseleave', () => {
 //  End-of-game overlay
 // ═══════════════════════════════════════════════════════════
 function showEndGame(reason) {
-  const overlay  = el('endgame-overlay');
+  const banner   = el('endgame-banner');
   const icon     = el('endgame-icon');
   const title    = el('endgame-title');
   const subtitle = el('endgame-subtitle');
@@ -794,7 +786,7 @@ function showEndGame(reason) {
   if (isEndOfUniverse) {
     icon.textContent      = '🏁';
     title.textContent     = 'Fin de partie';
-    title.style.color     = '#7fd4ff';
+    title.style.color     = '#c8d8f0';
     subtitle.textContent  = 'La partie est terminée.';
   } else {
     icon.textContent      = '⚠️';
@@ -803,11 +795,11 @@ function showEndGame(reason) {
     subtitle.textContent  = reason || 'Connexion perdue';
   }
 
-  overlay.classList.add('visible');
+  banner.classList.add('visible');
 }
 
 el('endgame-btn').addEventListener('click', () => {
-  el('endgame-overlay').classList.remove('visible');
+  el('endgame-banner').classList.remove('visible');
   // Re-show the connection dialog
   el('dialog-overlay').style.display = 'flex';
   el('inp-universe').focus();
