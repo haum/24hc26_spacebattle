@@ -88,6 +88,28 @@
     }
     #btn-reset:hover { background: #1a3a60cc; }
 
+    #btn-trails {
+      position: absolute;
+      bottom: 140px; right: 16px;
+      pointer-events: all;
+      background: #0d1320cc;
+      border: 1px solid #2a4060;
+      border-radius: 6px;
+      color: #556677;
+      font-family: inherit;
+      font-size: 12px;
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      display: none;
+    }
+    #btn-trails.active {
+      color: #7fd4ff;
+      border-color: #4080b0;
+      background: #1a3a60cc;
+    }
+    #btn-trails:hover { background: #1a3a60cc; }
+
     #status-bar {
       position: absolute;
       top: 16px; right: 16px;
@@ -204,6 +226,7 @@
   </div>
 
   <button id="btn-reset">⟳ Réinitialiser vue</button>
+  <button id="btn-trails">⟿ Tracés</button>
 </div>
 
 <div id="dialog-overlay">
@@ -857,6 +880,133 @@ gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0);
 gl.bindVertexArray(null);
 
 // ═══════════════════════════════════════════════════════════
+//  3D trail program
+// ═══════════════════════════════════════════════════════════
+const TRAIL_VS = `#version 300 es
+precision highp float;
+layout(location=0) in vec3 aPos;
+layout(location=1) in float aAge;   // 0=oldest … 1=newest
+uniform mat4 uVP;
+uniform vec3 uGridSize3;
+uniform float uCell3;
+uniform vec3 uColor;
+out float vAge;
+void main(){
+  vAge = aAge;
+  vec3 world = (aPos + 0.5) * uCell3 - uGridSize3 * uCell3 * 0.5;
+  gl_Position = uVP * vec4(world, 1.0);
+}`;
+const TRAIL_FS = `#version 300 es
+precision highp float;
+in float vAge;
+uniform vec3 uColor;
+out vec4 fragColor;
+void main(){
+  // fade from transparent (oldest) to opaque (newest)
+  float alpha = pow(vAge, 1.5) * 0.75;
+  fragColor = vec4(uColor, alpha);
+}`;
+
+const trailProg     = buildProgram(TRAIL_VS, TRAIL_FS);
+const trailUVP      = gl.getUniformLocation(trailProg, 'uVP');
+const trailUGridSz  = gl.getUniformLocation(trailProg, 'uGridSize3');
+const trailUCell    = gl.getUniformLocation(trailProg, 'uCell3');
+const trailUColor   = gl.getUniformLocation(trailProg, 'uColor');
+
+const trailVao = gl.createVertexArray();
+const trailPosBuf = gl.createBuffer();
+const trailAgeBuf = gl.createBuffer();
+gl.bindVertexArray(trailVao);
+gl.bindBuffer(gl.ARRAY_BUFFER, trailPosBuf);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0);
+gl.bindBuffer(gl.ARRAY_BUFFER, trailAgeBuf);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 4, 0);
+gl.bindVertexArray(null);
+
+// Trail state — one entry per vessel name
+// trails[name] = { positions: [[x,y,z], …], color: [r,g,b] }
+const trails     = new Map();
+let   showTrails = false;
+const MAX_TRAIL  = 300;   // max points per vessel
+
+// Deterministic colour from vessel name
+function vesselColor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const hue = (h % 360) / 360;
+  // HSV → RGB  (full saturation, high value)
+  const i = Math.floor(hue * 6), f = hue * 6 - i;
+  const q = 1 - f, t = f;
+  const rgb = [
+    [1,t,0],[q,1,0],[0,1,t],[0,q,1],[t,0,1],[1,0,q]
+  ][i % 6];
+  return rgb.map(v => 0.5 + v * 0.5);  // desaturate slightly
+}
+
+function recordTrails(vessels) {
+  if (!vessels) return;
+  for (const [name, pos] of vessels) {
+    if (!trails.has(name)) trails.set(name, { positions: [], color: vesselColor(name) });
+    const t = trails.get(name);
+    const last = t.positions.at(-1);
+    // only record if position changed
+    if (!last || last[0] !== pos[0] || last[1] !== pos[1] || (last[2]??0) !== (pos[2]??0))
+      t.positions.push([pos[0], pos[1], pos[2] ?? 0]);
+    if (t.positions.length > MAX_TRAIL) t.positions.shift();
+  }
+  // remove vessels no longer present
+  const active = new Set(vessels.map(([n]) => n));
+  for (const name of trails.keys()) if (!active.has(name)) trails.delete(name);
+}
+
+function drawTrails(mvp, gridSz, cell) {
+  if (!showTrails || trails.size === 0) return;
+
+  gl.useProgram(trailProg);
+  gl.bindVertexArray(trailVao);
+  gl.uniformMatrix4fv(trailUVP, false, mvp);
+  gl.uniform3f(trailUGridSz, gridSz[0], gridSz[1], gridSz[2]);
+  gl.uniform1f(trailUCell, cell);
+
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+  for (const [, trail] of trails) {
+    const pts = trail.positions;
+    if (pts.length < 2) continue;
+    const n = pts.length;
+
+    const posData = new Float32Array(n * 3);
+    const ageData = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      posData[i*3]   = pts[i][0];
+      posData[i*3+1] = pts[i][1];
+      posData[i*3+2] = pts[i][2];
+      ageData[i] = i / (n - 1);
+    }
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, trailPosBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, posData, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, trailAgeBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, ageData, gl.DYNAMIC_DRAW);
+
+    gl.uniform3fv(trailUColor, trail.color);
+    gl.drawArrays(gl.LINE_STRIP, 0, n);
+  }
+
+  gl.disable(gl.BLEND);
+  gl.bindVertexArray(null);
+}
+
+// Toggle button
+el('btn-trails').addEventListener('click', () => {
+  showTrails = !showTrails;
+  el('btn-trails').classList.toggle('active', showTrails);
+});
+
+// ═══════════════════════════════════════════════════════════
 //  Camera state
 // ═══════════════════════════════════════════════════════════
 // 2D: pan (world-px offset from centre) + zoom
@@ -1205,6 +1355,7 @@ function render(ts) {
       gl.uniform1f(u3DRotZ,   mo.rotZ);
       gl.drawElementsInstanced(gl.TRIANGLES, mo.count, gl.UNSIGNED_SHORT, 0, instCounts3D[k]);
     }
+    drawTrails(mvp, gridSz, cell);
     gl.disable(gl.DEPTH_TEST);
 
   } else {
@@ -1404,13 +1555,15 @@ let ws = null;
 function updateModeUI() {
   const three = is3D();
   canvas.classList.toggle('mode3d', three);
-  el('hint-2d').style.display = three ? 'none' : '';
-  el('hint-3d').style.display = three ? '' : 'none';
+  el('hint-2d').style.display    = three ? 'none' : '';
+  el('hint-3d').style.display    = three ? '' : 'none';
+  el('btn-trails').style.display = three ? '' : 'none';
 }
 
 function connect(universe, key) {
   if (ws) { ws.onclose = null; ws.close(); }
   resetCamera();
+  trails.clear();
 
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}/ws`);
@@ -1429,6 +1582,7 @@ function connect(universe, key) {
       el('info-size').textContent     = (msg.size ?? []).join(' × ');
       el('info-vessels').textContent  = (msg.vessels ?? []).length;
       updateModeUI();
+      if (is3D()) recordTrails(msg.vessels);
     } else {
       console.warn('Unknown message:', msg);
     }
