@@ -861,7 +861,7 @@ function is3D() { return (objs?.size?.length ?? 2) >= 3; }
 // ── Build MVP for 3D camera ──────────────────────────────────
 // cell is always 1 world-unit per grid cell — fixed, independent of zoom.
 // cam3D.radius is the orbital distance in world units.
-const CELL_3D = 1.0;
+const CELL_3D = 2.5;
 
 function buildMVP(W, H) {
   const gridSz = objs.size;
@@ -875,7 +875,7 @@ function buildMVP(W, H) {
     cz + cam3D.radius * Math.sin(cam3D.phi),
   ];
   const view = m4.lookAt(eye, [cx, cy, cz], [0, 0, 1]);
-  const proj = m4.perspective(Math.PI / 3, W / H, 0.1, cam3D.radius * 10);
+  const proj = m4.perspective(Math.PI / 3, W / H, cam3D.radius * 0.01, cam3D.radius * 10);
   return { mvp: m4.multiply(proj, view), cell, eye };
 }
 
