@@ -43,7 +43,7 @@ MSG_DROP_MINE = {
             "type": "number",
         },
     },
-    "required": ["type"],
+    "required": ["type","delay"],
     "additionalProperties": False
 }
 
