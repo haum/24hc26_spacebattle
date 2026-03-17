@@ -875,7 +875,6 @@ function buildMVP(W, H) {
     cz + cam3D.radius * Math.sin(cam3D.phi),
   ];
   const view = m4.lookAt(eye, [cx, cy, cz], [0, 0, 1]);
-  const gridSz = objs.size;
   const far = Math.max(...gridSz) * CELL_3D * 4 + cam3D.radius;
   const near = Math.min(cam3D.radius * 0.01, far * 0.0001);
   const proj = m4.perspective(Math.PI / 3, W / H, near, far);
