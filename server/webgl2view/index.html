@@ -888,8 +888,10 @@ function buildMVP(W, H) {
     cz + cam3D.radius * Math.sin(cam3D.phi),
   ];
   const view = m4.lookAt(eye, [cx, cy, cz], [0, 0, 1]);
-  const far = Math.max(...gridSz) * CELL_3D * 4 + cam3D.radius;
-  const near = Math.min(cam3D.radius * 0.01, far * 0.0001);
+  // far covers the entire toric neighbourhood (±1 tile) regardless of zoom
+  const far  = Math.max(...gridSz) * CELL_3D * 6;
+  // near is fixed to half a cell — never depends on radius
+  const near = CELL_3D * 0.2;
   const proj = m4.perspective(Math.PI / 3, W / H, near, far);
   return { mvp: m4.multiply(proj, view), cell, eye };
 }
@@ -982,7 +984,7 @@ canvas.addEventListener('wheel', e => {
   const factor = e.deltaY < 0 ? 1/1.15 : 1.15;
   if (is3D()) {
     const gridSz = objs?.size ?? [50, 50, 50];
-    const rMin = CELL_3D * 2;
+    const rMin = CELL_3D * 1.2;   // slightly above near (CELL_3D*0.2) + object radius
     const rMax = Math.max(...gridSz) * CELL_3D * 8;
     cam3D.radius = Math.max(rMin, Math.min(rMax, cam3D.radius * factor));
     el('info-zoom').textContent = Math.round(cam3D.radius) + ' u';
