@@ -1031,8 +1031,11 @@ function buildMVP(W, H) {
   // near is fixed to half a cell — never depends on radius
   const near = CELL_3D * 0.2;
   const proj = m4.perspective(Math.PI / 3, W / H, near, far);
-  return { mvp: m4.multiply(proj, view), cell, eye };
+  return { mvp: m4.multiply(proj, view), cell, eye, view };
 }
+
+// Alias used by pan handler to access the view matrix
+function buildMVPFull(W, H) { return buildMVP(W, H); }
 
 function normalisePan2D() {
   const gridSz = objs?.size ?? [50, 50];
@@ -1093,23 +1096,24 @@ window.addEventListener('mousemove', e => {
                   Math.min( Math.PI/2 - 0.05,
                   drag.phi0 + dy * 0.007));
   } else if (drag.mode === 'pan3d') {
-    // Pan in the camera-right and camera-up directions
-    const gridSz = objs?.size ?? [50,50,50];
-    const minSpeed = Math.max(...gridSz) * CELL_3D * 0.003;
-    const speed = Math.max(cam3D.radius * 0.002, minSpeed);
-    const right = [
-      -Math.sin(cam3D.theta),
-       Math.cos(cam3D.theta),
-       0,
-    ];
-    const up = [
-      -Math.sin(cam3D.phi) * Math.cos(cam3D.theta),
-      -Math.sin(cam3D.phi) * Math.sin(cam3D.theta),
-       Math.cos(cam3D.phi),
-    ];
-    cam3D.panX = drag.panX0 + (-dx * right[0] + dy * up[0]) * speed;
-    cam3D.panY = drag.panY0 + (-dx * right[1] + dy * up[1]) * speed;
-    cam3D.panZ = drag.panZ0 + (-dx * right[2] + dy * up[2]) * speed;
+    // 1 pixel = tan(FOV/2) * radius * 2 / viewport_height  world units
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const H   = canvas.height;
+    const speed = Math.tan(Math.PI / 6) * cam3D.radius * 2 / H * dpr;
+
+    // Extract camera right and up from view matrix (rows 0 and 1 of the rotation part)
+    // view matrix is column-major: view[col*4 + row]
+    // row 0 = right vector, row 1 = up vector
+    const W = canvas.width;
+    const { mvp: _, cell: __, eye: ___ , view } = buildMVPFull(W, H);
+    // right = (view[0], view[4], view[8])   — first row of view rotation
+    // up    = (view[1], view[5], view[9])   — second row
+    const right = [view[0], view[4], view[8]];
+    const up    = [view[1], view[5], view[9]];
+
+    cam3D.panX = drag.panX0 + (-dx * right[0] - dy * up[0]) * speed;
+    cam3D.panY = drag.panY0 + (-dx * right[1] - dy * up[1]) * speed;
+    cam3D.panZ = drag.panZ0 + (-dx * right[2] - dy * up[2]) * speed;
   }
 });
 
