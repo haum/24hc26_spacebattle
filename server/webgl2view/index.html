@@ -18,7 +18,9 @@
       position: absolute; inset: 0;
       width: 100%; height: 100%;
       display: block;
+      cursor: grab;
     }
+    canvas#gl.dragging { cursor: grabbing; }
 
     /* ── HUD overlay ────────────────────────────────────────── */
     #hud {
@@ -61,6 +63,34 @@
       width: 12px; height: 12px; border-radius: 50%;
       flex-shrink: 0;
     }
+
+    /* zoom hint */
+    #zoom-hint {
+      position: absolute;
+      bottom: 16px; right: 16px;
+      color: #445566;
+      font-size: 11px;
+      line-height: 1.8;
+      text-align: right;
+      pointer-events: none;
+    }
+
+    /* reset-view button */
+    #btn-reset {
+      position: absolute;
+      bottom: 100px; right: 16px;
+      pointer-events: all;
+      background: #0d1320cc;
+      border: 1px solid #2a4060;
+      border-radius: 6px;
+      color: #7fd4ff;
+      font-family: inherit;
+      font-size: 12px;
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #btn-reset:hover { background: #1a3a60cc; }
 
     #status-bar {
       position: absolute;
@@ -110,6 +140,59 @@
     }
     #dialog button:hover { background: #1e4878; }
     #dialog-error { color: #f88; font-size: 12px; min-height: 18px; margin-top: -8px; margin-bottom: 10px; }
+
+    /* ── End-of-game overlay ────────────────────────────────── */
+    #endgame-overlay {
+      position: absolute; inset: 0;
+      display: none;
+      align-items: center; justify-content: center;
+      background: #00000088;
+      backdrop-filter: blur(6px);
+      animation: fadeIn 0.6s ease;
+    }
+    #endgame-overlay.visible { display: flex; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    #endgame-box {
+      text-align: center;
+      padding: 48px 56px;
+      background: #0a0e1a;
+      border-radius: 16px;
+      border: 1px solid #2a4060;
+      box-shadow: 0 0 60px #0008;
+    }
+    #endgame-icon {
+      font-size: 64px;
+      margin-bottom: 12px;
+      display: block;
+      animation: pulse 1.5s ease infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1);    opacity: 1; }
+      50%       { transform: scale(1.08); opacity: 0.8; }
+    }
+    #endgame-title {
+      font-size: 32px;
+      font-weight: bold;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    #endgame-subtitle {
+      font-size: 14px;
+      color: #7fd4ff;
+      margin-bottom: 28px;
+    }
+    #endgame-btn {
+      padding: 10px 28px;
+      background: #1a3a60; border: 1px solid #2a5080;
+      border-radius: 8px; color: #7fd4ff;
+      font-family: inherit; font-size: 14px;
+      cursor: pointer; transition: background 0.2s;
+    }
+    #endgame-btn:hover { background: #1e4878; }
   </style>
 </head>
 <body>
@@ -122,6 +205,7 @@
     <div>Grille&nbsp;&nbsp;: <span id="info-size">—</span></div>
     <div>Vaisseaux : <span id="info-vessels">0</span></div>
     <div>Curseur&nbsp;: <span id="info-cursor">—</span></div>
+    <div>Zoom&nbsp;&nbsp;&nbsp;&nbsp;: <span id="info-zoom">100%</span></div>
   </div>
 
   <div id="status-bar">
@@ -138,6 +222,13 @@
     <div class="leg"><div class="leg-dot" style="background:#c020c0"></div>Mine</div>
     <div class="leg"><div class="leg-dot" style="background:#20d080"></div>Ressource</div>
   </div>
+
+  <div id="zoom-hint">
+    Molette : zoom&nbsp;&nbsp;|&nbsp;&nbsp;Glisser : pan<br>
+    Double-clic : réinitialiser la vue
+  </div>
+
+  <button id="btn-reset">⟳ Réinitialiser vue</button>
 </div>
 
 <div id="dialog-overlay">
@@ -149,6 +240,15 @@
     <input id="inp-key" type="password" placeholder="admin key" />
     <div id="dialog-error"></div>
     <button id="btn-connect">Connecter</button>
+  </div>
+</div>
+
+<div id="endgame-overlay">
+  <div id="endgame-box">
+    <span id="endgame-icon">🏆</span>
+    <div id="endgame-title">Fin de partie</div>
+    <div id="endgame-subtitle" id="endgame-subtitle">—</div>
+    <button id="endgame-btn">Nouvelle partie</button>
   </div>
 </div>
 
@@ -166,50 +266,52 @@ const gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
 if (!gl) { alert('WebGL2 non supporté par ce navigateur.'); }
 
 // ── Shaders ─────────────────────────────────────────────────
-
-// Each object is drawn as an instanced quad (2 triangles).
-// Per-instance attributes: position (vec2) + kind (float).
+//
+// Camera transform applied in all world-space shaders:
+//   pixelPos_screen = (pixelPos_world - uPan) * uZoom
+//                   + viewport_centre
 //
 // kinds:
 //   0 = asteroid   1 = vessel   2 = torpedo   3 = mine   4 = resource
-//
+
 const VS = `#version 300 es
 precision highp float;
 
-// Unit quad corners (triangle-strip order, as 2 triangles)
 const vec2 CORNERS[6] = vec2[6](
   vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(0.0, 1.0),
   vec2(1.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 1.0)
 );
 
-// Per-instance
-layout(location=0) in vec2  aGridPos;   // integer grid cell
-layout(location=1) in float aKind;      // 0..4
-layout(location=2) in float aAlpha;     // 0..1  (for fade effects)
+layout(location=0) in vec2  aGridPos;
+layout(location=1) in float aKind;
+layout(location=2) in float aAlpha;
 
-uniform vec2  uGridSize;   // e.g. [50, 50]
-uniform vec2  uViewport;   // canvas pixel size
-uniform float uCell;       // pixel size of one cell
+uniform vec2  uGridSize;
+uniform vec2  uViewport;
+uniform float uCell;
+uniform vec2  uPan;     // world-pixel offset of the camera centre
+uniform float uZoom;    // zoom factor (1 = fit-to-screen)
 
 out float vKind;
 out float vAlpha;
-out vec2  vUV;             // 0..1 within the cell
+out vec2  vUV;
 
 void main() {
   vec2 corner = CORNERS[gl_VertexID];
-  vUV   = corner;
+  vUV    = corner;
   vKind  = aKind;
   vAlpha = aAlpha;
 
-  // Grid origin so the grid is centred in the viewport
-  vec2 orig = (uViewport - uGridSize * uCell) * 0.5;
+  // World-pixel position (unzoomed, unscrolled)
+  vec2 orig     = (uViewport - uGridSize * uCell) * 0.5;
+  vec2 worldPx  = orig + (aGridPos + corner) * uCell;
 
-  vec2 pixelPos = orig + (aGridPos + corner) * uCell;
+  // Camera transform: zoom around viewport centre
+  vec2 centre   = uViewport * 0.5;
+  vec2 screenPx = (worldPx - centre - uPan) * uZoom + centre;
 
-  // NDC: y-flip (WebGL y=0 is bottom)
-  vec2 ndc = (pixelPos / uViewport) * 2.0 - 1.0;
+  vec2 ndc = (screenPx / uViewport) * 2.0 - 1.0;
   ndc.y = -ndc.y;
-
   gl_Position = vec4(ndc, 0.0, 1.0);
 }
 `;
@@ -219,50 +321,43 @@ precision highp float;
 
 in float vKind;
 in float vAlpha;
-in vec2  vUV;   // 0..1 in cell
+in vec2  vUV;
 
 out vec4 fragColor;
 
-// Signed-distance to a circle centred at 0.5,0.5, radius r
 float sdCircle(vec2 uv, float r) {
   return length(uv - 0.5) - r;
 }
 
-// Signed-distance to a diamond (||uv-0.5||_1 - r)
 float sdDiamond(vec2 uv, float r) {
   vec2 d = abs(uv - 0.5);
   return (d.x + d.y) - r;
 }
 
-// Signed-distance to a rounded square
-float sdRoundedBox(vec2 uv, float half, float radius) {
-  vec2 d = abs(uv - 0.5) - half + radius;
+float sdRoundedBox(vec2 uv, float extent, float radius) {
+  vec2 d = abs(uv - 0.5) - extent + radius;
   return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - radius;
 }
 
-// Soft anti-aliased edge
 float fill(float d, float aa) {
   return 1.0 - smoothstep(-aa, aa, d);
 }
 
 void main() {
-  float aa = 0.03; // anti-alias width in UV space
+  float aa = 0.03;
   int   k  = int(vKind + 0.5);
 
   vec3  col;
   float alpha;
 
   if (k == 0) {
-    // ── Asteroid: brown rounded square ───────────────────
     float d = sdRoundedBox(vUV, 0.38, 0.12);
     alpha = fill(d, aa);
     col   = vec3(0.69, 0.25, 0.06);
-    // darker inner crack pattern
     float crack = abs(sin((vUV.x - vUV.y) * 12.0)) * 0.15;
     col -= crack;
 
   } else if (k == 1) {
-    // ── Vessel: bright circle with glow ring ─────────────
     float d     = sdCircle(vUV, 0.28);
     float dRing = sdCircle(vUV, 0.38);
     float body  = fill(d, aa);
@@ -271,16 +366,13 @@ void main() {
     col   = mix(vec3(1.0, 0.82, 0.18), vec3(1.0, 0.95, 0.55), 1.0 - length(vUV-0.5)*2.0);
 
   } else if (k == 2) {
-    // ── Torpedo: thin elongated diamond ──────────────────
     vec2 uv2 = vUV;
-    // squash vertically to make it elongated
     uv2.y = (uv2.y - 0.5) * 2.2 + 0.5;
     float d = sdDiamond(uv2, 0.28);
     alpha = fill(d, aa * 1.5);
     col   = vec3(1.0, 0.22, 0.18);
 
   } else if (k == 3) {
-    // ── Mine: magenta octagon-ish (cross of two rects) ───
     vec2 uv2 = vUV - 0.5;
     float sq1 = sdRoundedBox(vUV, 0.22, 0.04);
     vec2  rot = vec2(uv2.x*0.707 - uv2.y*0.707,
@@ -291,7 +383,6 @@ void main() {
     col   = vec3(0.78, 0.12, 0.82);
 
   } else {
-    // ── Resource (k==4): green pulsing disc ──────────────
     float d = sdCircle(vUV, 0.32);
     alpha = fill(d, aa) * mix(0.6, 1.0, vAlpha);
     col   = vec3(0.10, 0.82, 0.48);
@@ -320,77 +411,68 @@ function buildProgram(vs, fs) {
   return p;
 }
 
-const prog = buildProgram(VS, FS);
+const prog      = buildProgram(VS, FS);
 const uGridSize = gl.getUniformLocation(prog, 'uGridSize');
 const uViewport = gl.getUniformLocation(prog, 'uViewport');
 const uCell     = gl.getUniformLocation(prog, 'uCell');
+const uPan      = gl.getUniformLocation(prog, 'uPan');
+const uZoom     = gl.getUniformLocation(prog, 'uZoom');
 
-// ── Instanced buffer layout ──────────────────────────────────
-// Float32 per instance: [ gridX, gridY, kind, alpha ]   → 4 floats = 16 bytes
+// ── Instanced buffer ─────────────────────────────────────────
 const FLOATS_PER_INST = 4;
 const vao = gl.createVertexArray();
 gl.bindVertexArray(vao);
-
 const instBuf = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
-
-// aGridPos  (location 0) → 2 floats
 gl.enableVertexAttribArray(0);
 gl.vertexAttribPointer(0, 2, gl.FLOAT, false, FLOATS_PER_INST * 4, 0);
 gl.vertexAttribDivisor(0, 1);
-
-// aKind  (location 1) → 1 float
 gl.enableVertexAttribArray(1);
 gl.vertexAttribPointer(1, 1, gl.FLOAT, false, FLOATS_PER_INST * 4, 8);
 gl.vertexAttribDivisor(1, 1);
-
-// aAlpha (location 2) → 1 float
 gl.enableVertexAttribArray(2);
 gl.vertexAttribPointer(2, 1, gl.FLOAT, false, FLOATS_PER_INST * 4, 12);
 gl.vertexAttribDivisor(2, 1);
-
 gl.bindVertexArray(null);
 
-// ── Background (full-screen quad, separate simple program) ──
+// ── Background ───────────────────────────────────────────────
 const BG_VS = `#version 300 es
 precision highp float;
 const vec2 P[3] = vec2[3](vec2(-1,-1),vec2(3,-1),vec2(-1,3));
 void main() { gl_Position = vec4(P[gl_VertexID],0,1); }`;
-
 const BG_FS = `#version 300 es
 precision highp float;
 uniform vec2 uRes;
 out vec4 fragColor;
 void main(){
   vec2 uv = gl_FragCoord.xy / uRes;
-  // deep space gradient
   vec3 col = mix(vec3(0.04,0.04,0.10), vec3(0.06,0.08,0.16), uv.y);
-  // subtle star noise
   float n = fract(sin(dot(floor(gl_FragCoord.xy / 2.0),
                           vec2(127.1, 311.7))) * 43758.5453);
   if (n > 0.993) col += vec3(0.5 + 0.5*n) * 0.9;
   fragColor = vec4(col, 1.0);
 }`;
+const bgProg = buildProgram(BG_VS, BG_FS);
+const bgVao  = gl.createVertexArray();
+const bgURes = gl.getUniformLocation(bgProg, 'uRes');
 
-const bgProg  = buildProgram(BG_VS, BG_FS);
-const bgVao   = gl.createVertexArray(); // empty VAO for attributeless draw
-const bgURes  = gl.getUniformLocation(bgProg, 'uRes');
-
-// ── Grid-border program ──────────────────────────────────────
-// Draws 4 border lines as a line-loop using a geometry computed on the GPU.
+// ── Border (world-space, camera-aware) ───────────────────────
 const BORDER_VS = `#version 300 es
 precision highp float;
-// 5 vertices for a line-loop (0=TL, 1=TR, 2=BR, 3=BL, 4=TL again)
 const vec2 CORNERS[5] = vec2[5](
   vec2(0,0), vec2(1,0), vec2(1,1), vec2(0,1), vec2(0,0)
 );
-uniform vec2 uGridSize;
-uniform vec2 uViewport;
+uniform vec2  uGridSize;
+uniform vec2  uViewport;
 uniform float uCell;
+uniform vec2  uPan;
+uniform float uZoom;
 void main(){
-  vec2 orig = (uViewport - uGridSize * uCell) * 0.5;
-  vec2 px   = orig + CORNERS[gl_VertexID] * uGridSize * uCell;
-  vec2 ndc  = (px / uViewport) * 2.0 - 1.0;
+  vec2 orig    = (uViewport - uGridSize * uCell) * 0.5;
+  vec2 worldPx = orig + CORNERS[gl_VertexID] * uGridSize * uCell;
+  vec2 centre  = uViewport * 0.5;
+  vec2 screenPx = (worldPx - centre - uPan) * uZoom + centre;
+  vec2 ndc = (screenPx / uViewport) * 2.0 - 1.0;
   ndc.y = -ndc.y;
   gl_Position = vec4(ndc, 0.0, 1.0);
 }`;
@@ -398,58 +480,160 @@ const BORDER_FS = `#version 300 es
 precision highp float;
 out vec4 fragColor;
 void main(){ fragColor = vec4(0.3, 0.5, 0.7, 0.6); }`;
-
-const borderProg        = buildProgram(BORDER_VS, BORDER_FS);
-const borderVao         = gl.createVertexArray();
-const borderUGridSize   = gl.getUniformLocation(borderProg, 'uGridSize');
-const borderUViewport   = gl.getUniformLocation(borderProg, 'uViewport');
-const borderUCell       = gl.getUniformLocation(borderProg, 'uCell');
+const borderProg      = buildProgram(BORDER_VS, BORDER_FS);
+const borderVao       = gl.createVertexArray();
+const borderUGridSize = gl.getUniformLocation(borderProg, 'uGridSize');
+const borderUViewport = gl.getUniformLocation(borderProg, 'uViewport');
+const borderUCell     = gl.getUniformLocation(borderProg, 'uCell');
+const borderUPan      = gl.getUniformLocation(borderProg, 'uPan');
+const borderUZoom     = gl.getUniformLocation(borderProg, 'uZoom');
 
 // ═══════════════════════════════════════════════════════════
-//  State
+//  Camera state
+//  pan  : offset in world-pixels, relative to viewport centre
+//  zoom : multiplier (1 = default fit)
 // ═══════════════════════════════════════════════════════════
-let objs       = {};          // latest world_report
-let instData   = new Float32Array(0);
-let instCount  = 0;
-let needUpload = false;
+const cam = { panX: 0, panY: 0, zoom: 1 };
+const ZOOM_MIN = 0.1, ZOOM_MAX = 20;
 
-// Animation time for alpha pulses
-let animT = 0;
-let lastRAF = 0;
+function resetCamera() {
+  cam.panX = 0; cam.panY = 0; cam.zoom = 1;
+  el('info-zoom').textContent = '100%';
+}
 
-// ── Team → colour index (for vessel tinting via alpha encoding) ─
-// We keep it simple: all vessels same yellow. Could extend.
+// ── Mouse pan ────────────────────────────────────────────────
+let drag = null;   // { startX, startY, panX0, panY0 }
 
-// ── Kind constants ───────────────────────────────────────────
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  drag = { startX: e.clientX, startY: e.clientY, panX0: cam.panX, panY0: cam.panY };
+  canvas.classList.add('dragging');
+});
+window.addEventListener('mousemove', e => {
+  if (!drag) return;
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  cam.panX = drag.panX0 - (e.clientX - drag.startX) * dpr / cam.zoom;
+  cam.panY = drag.panY0 - (e.clientY - drag.startY) * dpr / cam.zoom;
+});
+window.addEventListener('mouseup', () => {
+  drag = null;
+  canvas.classList.remove('dragging');
+});
+
+// ── Wheel zoom (zoom toward cursor) ─────────────────────────
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const dpr    = Math.max(1, window.devicePixelRatio || 1);
+  const rect   = canvas.getBoundingClientRect();
+  // cursor position in canvas pixels
+  const cx = (e.clientX - rect.left)  * dpr;
+  const cy = (e.clientY - rect.top)   * dpr;
+  const W  = canvas.width, H = canvas.height;
+
+  // cursor in world-pixel space (before zoom change)
+  const worldX = (cx - W * 0.5) / cam.zoom + cam.panX;
+  const worldY = (cy - H * 0.5) / cam.zoom + cam.panY;
+
+  const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+  cam.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, cam.zoom * factor));
+
+  // keep world point under cursor fixed
+  cam.panX = worldX - (cx - W * 0.5) / cam.zoom;
+  cam.panY = worldY - (cy - H * 0.5) / cam.zoom;
+
+  el('info-zoom').textContent = Math.round(cam.zoom * 100) + '%';
+}, { passive: false });
+
+// ── Double-click: reset ──────────────────────────────────────
+canvas.addEventListener('dblclick', resetCamera);
+el('btn-reset').addEventListener('click', resetCamera);
+
+// ── Touch: pan (single finger) + pinch zoom ──────────────────
+let touches = {};  // id → {x, y}
+let pinchDist0 = null, pinchZoom0 = null, pinchPan0 = null;
+
+function midpoint(a, b) {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+function dist(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches)
+    touches[t.identifier] = { x: t.clientX, y: t.clientY };
+
+  const ids = Object.keys(touches);
+  if (ids.length === 2) {
+    const a = touches[ids[0]], b = touches[ids[1]];
+    pinchDist0 = dist(a, b);
+    pinchZoom0 = cam.zoom;
+    pinchPan0  = { x: cam.panX, y: cam.panY };
+    drag = null;
+  } else if (ids.length === 1) {
+    const id = ids[0];
+    drag = { startX: touches[id].x, startY: touches[id].y,
+             panX0: cam.panX, panY0: cam.panY };
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches)
+    touches[t.identifier] = { x: t.clientX, y: t.clientY };
+
+  const ids = Object.keys(touches);
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+  if (ids.length === 2) {
+    const a = touches[ids[0]], b = touches[ids[1]];
+    const d = dist(a, b);
+    cam.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, pinchZoom0 * d / pinchDist0));
+    el('info-zoom').textContent = Math.round(cam.zoom * 100) + '%';
+  } else if (ids.length === 1 && drag) {
+    const id = ids[0];
+    cam.panX = drag.panX0 - (touches[id].x - drag.startX) * dpr / cam.zoom;
+    cam.panY = drag.panY0 - (touches[id].y - drag.startY) * dpr / cam.zoom;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  for (const t of e.changedTouches) delete touches[t.identifier];
+  pinchDist0 = null;
+  drag = null;
+});
+
+// ═══════════════════════════════════════════════════════════
+//  Game state
+// ═══════════════════════════════════════════════════════════
+let objs      = {};
+let instData  = new Float32Array(0);
+let instCount = 0;
+let animT     = 0;
+let lastRAF   = 0;
+
 const KIND = { asteroid: 0, vessel: 1, torpedo: 2, mine: 3, resource: 4 };
 
-// ═══════════════════════════════════════════════════════════
-//  Build instance buffer from world_report
-// ═══════════════════════════════════════════════════════════
 function buildInstances(t) {
-  const rows = [];
-  const pulse = 0.5 + 0.5 * Math.sin(t * 2.5);   // 0..1  for resources
+  const rows  = [];
+  const pulse = 0.5 + 0.5 * Math.sin(t * 2.5);
 
-  if (objs.asteroids) {
+  if (objs.asteroids)
     for (const p of objs.asteroids)
       rows.push(p[0], p[1], KIND.asteroid, 1.0);
-  }
-  if (objs.vessels) {
+  if (objs.vessels)
     for (const [, p] of objs.vessels)
       rows.push(p[0], p[1], KIND.vessel, 1.0);
-  }
-  if (objs.torpedos) {
+  if (objs.torpedos)
     for (const [, p] of objs.torpedos)
       rows.push(p[0], p[1], KIND.torpedo, 1.0);
-  }
-  if (objs.mines) {
+  if (objs.mines)
     for (const [, p] of objs.mines)
       rows.push(p[0], p[1], KIND.mine, 1.0);
-  }
-  if (objs.farmables) {
+  if (objs.farmables)
     for (const [, p] of objs.farmables)
       rows.push(p[0], p[1], KIND.resource, pulse);
-  }
 
   instData  = new Float32Array(rows);
   instCount = rows.length / FLOATS_PER_INST;
@@ -463,7 +647,7 @@ function resize() {
   canvas.width  = Math.floor(canvas.clientWidth  * dpr);
   canvas.height = Math.floor(canvas.clientHeight * dpr);
 }
-window.addEventListener('resize', () => { resize(); });
+window.addEventListener('resize', resize);
 resize();
 
 // ═══════════════════════════════════════════════════════════
@@ -479,7 +663,7 @@ function render(ts) {
   const W = canvas.width, H = canvas.height;
   gl.viewport(0, 0, W, H);
 
-  // ── Background ──────────────────────────────────────────
+  // Background (fixed, no camera)
   gl.useProgram(bgProg);
   gl.bindVertexArray(bgVao);
   gl.uniform2f(bgURes, W, H);
@@ -488,16 +672,18 @@ function render(ts) {
   const gridSz = objs?.size ?? [50, 50];
   const cell   = Math.min(W / (gridSz[0] + 1), H / (gridSz[1] + 1));
 
-  // ── Border ──────────────────────────────────────────────
+  // Border
   gl.useProgram(borderProg);
   gl.bindVertexArray(borderVao);
   gl.uniform2f(borderUGridSize, gridSz[0], gridSz[1]);
   gl.uniform2f(borderUViewport, W, H);
   gl.uniform1f(borderUCell,     cell);
+  gl.uniform2f(borderUPan,      cam.panX, cam.panY);
+  gl.uniform1f(borderUZoom,     cam.zoom);
   gl.drawArrays(gl.LINE_STRIP, 0, 5);
 
-  // ── Instances ───────────────────────────────────────────
-  buildInstances(animT);   // rebuilds every frame (cheap for typical counts)
+  // Instances
+  buildInstances(animT);
 
   if (instCount > 0) {
     gl.useProgram(prog);
@@ -505,43 +691,55 @@ function render(ts) {
     gl.uniform2f(uGridSize, gridSz[0], gridSz[1]);
     gl.uniform2f(uViewport, W, H);
     gl.uniform1f(uCell,     cell);
+    gl.uniform2f(uPan,      cam.panX, cam.panY);
+    gl.uniform1f(uZoom,     cam.zoom);
 
-    // Upload instance data
     gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
     gl.bufferData(gl.ARRAY_BUFFER, instData, gl.DYNAMIC_DRAW);
 
-    // Blending for alpha shapes
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
     gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, instCount);
     gl.disable(gl.BLEND);
   }
-
-  // ── HUD: disconnected tint (2D overlay via CSS is handled separately) ──
 }
 requestAnimationFrame(render);
 
 // ═══════════════════════════════════════════════════════════
-//  Mouse hover → tooltip
+//  Mouse hover → tooltip  (camera-aware)
 // ═══════════════════════════════════════════════════════════
-const tooltip   = el('tooltip');
+const tooltip    = el('tooltip');
 const infoCursor = el('info-cursor');
 
-canvas.addEventListener('mousemove', e => {
+function screenToGrid(clientX, clientY) {
   const dpr    = Math.max(1, window.devicePixelRatio || 1);
   const rect   = canvas.getBoundingClientRect();
   const gridSz = objs?.size ?? [50, 50];
-  const W      = canvas.width, H = canvas.height;
+  const W = canvas.width, H = canvas.height;
   const cell   = Math.min(W / (gridSz[0] + 1), H / (gridSz[1] + 1));
-  const origX  = (W - gridSz[0] * cell) / 2;
-  const origY  = (H - gridSz[1] * cell) / 2;
 
-  const px = (e.clientX - rect.left) * dpr;
-  const py = (e.clientY - rect.top)  * dpr;
+  // Screen pixel (canvas coords)
+  const sx = (clientX - rect.left) * dpr;
+  const sy = (clientY - rect.top)  * dpr;
 
-  const gx = Math.floor((px - origX) / cell);
-  const gy = Math.floor((py - origY) / cell);
+  // Invert camera transform
+  const worldPx_x = (sx - W * 0.5) / cam.zoom + cam.panX + W * 0.5;
+  const worldPx_y = (sy - H * 0.5) / cam.zoom + cam.panY + H * 0.5;
+
+  const origX = (W - gridSz[0] * cell) / 2;
+  const origY = (H - gridSz[1] * cell) / 2;
+
+  return {
+    gx: Math.floor((worldPx_x - origX) / cell),
+    gy: Math.floor((worldPx_y - origY) / cell),
+    gridSz,
+  };
+}
+
+canvas.addEventListener('mousemove', e => {
+  if (drag) { tooltip.style.display = 'none'; return; }
+
+  const { gx, gy, gridSz } = screenToGrid(e.clientX, e.clientY);
 
   if (gx < 0 || gy < 0 || gx >= gridSz[0] || gy >= gridSz[1]) {
     infoCursor.textContent = '—';
@@ -551,23 +749,21 @@ canvas.addEventListener('mousemove', e => {
 
   infoCursor.textContent = `(${gx}, ${gy})`;
 
-  // Gather objects at this cell
   const lines = [];
   if (objs.asteroids?.some(p => p[0]===gx && p[1]===gy))
     lines.push('<span class="tt-title">Astéroïde</span>');
-  (objs.vessels ?? []).filter(([,p])=>p[0]===gx&&p[1]===gy)
+  (objs.vessels  ?? []).filter(([,p])=>p[0]===gx&&p[1]===gy)
     .forEach(([name])=> lines.push(`<span class="tt-title">Vaisseau</span> ${name}`));
   (objs.torpedos ?? []).filter(([,p])=>p[0]===gx&&p[1]===gy)
     .forEach(([name])=> lines.push(`<span class="tt-title">Torpille</span> ${name||'?'}`));
-  (objs.mines ?? []).filter(([,p])=>p[0]===gx&&p[1]===gy)
+  (objs.mines    ?? []).filter(([,p])=>p[0]===gx&&p[1]===gy)
     .forEach(([name])=> lines.push(`<span class="tt-title">Mine</span> ${name||'?'}`));
   (objs.farmables ?? []).filter(([,p])=>p[0]===gx&&p[1]===gy)
     .forEach(()=> lines.push(`<span class="tt-title">Ressource</span>`));
 
   if (lines.length) {
-    tooltip.innerHTML       = lines.join('<br>');
-    tooltip.style.display   = 'block';
-    // Position near cursor, keep inside viewport
+    tooltip.innerHTML     = lines.join('<br>');
+    tooltip.style.display = 'block';
     const tx = Math.min(e.clientX + 14, window.innerWidth  - 240);
     const ty = Math.min(e.clientY + 14, window.innerHeight - 120);
     tooltip.style.left = tx + 'px';
@@ -583,6 +779,41 @@ canvas.addEventListener('mouseleave', () => {
 });
 
 // ═══════════════════════════════════════════════════════════
+//  End-of-game overlay
+// ═══════════════════════════════════════════════════════════
+function showEndGame(reason) {
+  const overlay  = el('endgame-overlay');
+  const icon     = el('endgame-icon');
+  const title    = el('endgame-title');
+  const subtitle = el('endgame-subtitle');
+
+  // reason sent by the server: "End of universe" (observer.py)
+  // or the WebSocket close reason
+  const isEndOfUniverse = reason && reason.toLowerCase().includes('end of universe');
+
+  if (isEndOfUniverse) {
+    icon.textContent      = '🏁';
+    title.textContent     = 'Fin de partie';
+    title.style.color     = '#7fd4ff';
+    subtitle.textContent  = 'La partie est terminée.';
+  } else {
+    icon.textContent      = '⚠️';
+    title.textContent     = 'Déconnecté';
+    title.style.color     = '#ff8844';
+    subtitle.textContent  = reason || 'Connexion perdue';
+  }
+
+  overlay.classList.add('visible');
+}
+
+el('endgame-btn').addEventListener('click', () => {
+  el('endgame-overlay').classList.remove('visible');
+  // Re-show the connection dialog
+  el('dialog-overlay').style.display = 'flex';
+  el('inp-universe').focus();
+});
+
+// ═══════════════════════════════════════════════════════════
 //  WebSocket
 // ═══════════════════════════════════════════════════════════
 const connIndicator = el('conn-indicator');
@@ -591,7 +822,6 @@ const connLabel     = el('conn-label');
 function setConnected(v) {
   connIndicator.className = v ? 'connected' : '';
   connLabel.textContent   = v ? 'Connecté' : 'Déconnecté';
-  // red tint overlay via background of hud when disconnected
   el('hud').style.background = v ? '' : '#ff000011';
 }
 setConnected(false);
@@ -600,13 +830,12 @@ let ws = null;
 
 function connect(universe, key) {
   if (ws) { ws.onclose = null; ws.close(); }
+  resetCamera();
 
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}/ws`);
 
-  ws.onopen = () => {
-    setConnected(true);
-  };
+  ws.onopen = () => setConnected(true);
 
   ws.onmessage = e => {
     const msg = JSON.parse(e.data);
@@ -618,7 +847,6 @@ function connect(universe, key) {
 
     } else if (msg.type === 'world_report') {
       objs = msg;
-      // Update HUD panels
       el('info-universe').textContent = universe || '(lobby)';
       el('info-size').textContent     = (msg.size ?? []).join(' × ');
       el('info-vessels').textContent  = (msg.vessels ?? []).length;
@@ -630,36 +858,27 @@ function connect(universe, key) {
 
   ws.onclose = e => {
     setConnected(false);
-    connLabel.textContent = `Déconnecté — ${e.reason || 'connexion perdue'}`;
     ws = null;
+    // "End of universe" is the normal end-of-game close reason (observer.py)
+    showEndGame(e.reason || '');
   };
 
-  ws.onerror = () => {
-    setConnected(false);
-  };
+  ws.onerror = () => setConnected(false);
 }
 
 // ─── Dialog ─────────────────────────────────────────────────
 const overlay = el('dialog-overlay');
 const btnConn = el('btn-connect');
-const errMsg  = el('dialog-error');
 
 btnConn.addEventListener('click', () => {
   const universe = el('inp-universe').value.trim();
   const key      = el('inp-key').value.trim();
-  errMsg.textContent = '';
+  el('dialog-error').textContent = '';
   overlay.style.display = 'none';
   connect(universe, key);
 });
-
-el('inp-key').addEventListener('keydown', e => {
-  if (e.key === 'Enter') btnConn.click();
-});
-el('inp-universe').addEventListener('keydown', e => {
-  if (e.key === 'Enter') btnConn.click();
-});
-
-// Auto-focus
+el('inp-key').addEventListener('keydown',      e => { if (e.key === 'Enter') btnConn.click(); });
+el('inp-universe').addEventListener('keydown', e => { if (e.key === 'Enter') btnConn.click(); });
 el('inp-universe').focus();
 </script>
 </body>
