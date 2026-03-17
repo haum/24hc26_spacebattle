@@ -554,7 +554,7 @@ const bgVao  = gl.createVertexArray();
 const bgURes  = gl.getUniformLocation(bgProg, 'uRes');
 const bgUTime = gl.getUniformLocation(bgProg, 'uTime');
 
-// ── Border (world-space, camera-aware) ───────────────────────
+// ── Border (world-space, camera-aware, torus-aware) ──────────
 const BORDER_VS = `#version 300 es
 precision highp float;
 const vec2 CORNERS[5] = vec2[5](
@@ -565,9 +565,10 @@ uniform vec2  uViewport;
 uniform float uCell;
 uniform vec2  uPan;
 uniform float uZoom;
+uniform vec2  uTileOffset;  // in grid cells
 void main(){
   vec2 orig    = (uViewport - uGridSize * uCell) * 0.5;
-  vec2 worldPx = orig + CORNERS[gl_VertexID] * uGridSize * uCell;
+  vec2 worldPx = orig + (uTileOffset + CORNERS[gl_VertexID] * uGridSize) * uCell;
   vec2 centre  = uViewport * 0.5;
   vec2 screenPx = (worldPx - centre - uPan) * uZoom + centre;
   vec2 ndc = (screenPx / uViewport) * 2.0 - 1.0;
@@ -578,21 +579,36 @@ const BORDER_FS = `#version 300 es
 precision highp float;
 out vec4 fragColor;
 void main(){ fragColor = vec4(0.3, 0.5, 0.7, 0.6); }`;
-const borderProg      = buildProgram(BORDER_VS, BORDER_FS);
-const borderVao       = gl.createVertexArray();
-const borderUGridSize = gl.getUniformLocation(borderProg, 'uGridSize');
-const borderUViewport = gl.getUniformLocation(borderProg, 'uViewport');
-const borderUCell     = gl.getUniformLocation(borderProg, 'uCell');
-const borderUPan      = gl.getUniformLocation(borderProg, 'uPan');
-const borderUZoom     = gl.getUniformLocation(borderProg, 'uZoom');
+const borderProg        = buildProgram(BORDER_VS, BORDER_FS);
+const borderVao         = gl.createVertexArray();
+const borderUGridSize   = gl.getUniformLocation(borderProg, 'uGridSize');
+const borderUViewport   = gl.getUniformLocation(borderProg, 'uViewport');
+const borderUCell       = gl.getUniformLocation(borderProg, 'uCell');
+const borderUPan        = gl.getUniformLocation(borderProg, 'uPan');
+const borderUZoom       = gl.getUniformLocation(borderProg, 'uZoom');
+const borderUTileOffset = gl.getUniformLocation(borderProg, 'uTileOffset');
 
 // ═══════════════════════════════════════════════════════════
 //  Camera state
 //  pan  : offset in world-pixels, relative to viewport centre
+//           kept normalised modulo world size so wrapping is seamless
 //  zoom : multiplier (1 = default fit)
 // ═══════════════════════════════════════════════════════════
 const cam = { panX: 0, panY: 0, zoom: 1 };
 const ZOOM_MIN = 0.1, ZOOM_MAX = 20;
+
+// Wrap pan into [-worldPx/2, +worldPx/2) so the "canonical" tile
+// is always the one closest to centre.
+function normalisePan(cell) {
+  const gridSz  = objs?.size ?? [50, 50];
+  const W = canvas.width, H = canvas.height;
+  const cellPx  = Math.min(W / (gridSz[0] + 1), H / (gridSz[1] + 1));
+  const worldW  = gridSz[0] * cellPx;
+  const worldH  = gridSz[1] * cellPx;
+  // wrap into (-worldW/2 … +worldW/2]
+  cam.panX = ((cam.panX % worldW) + worldW * 1.5) % worldW - worldW * 0.5;
+  cam.panY = ((cam.panY % worldH) + worldH * 1.5) % worldH - worldH * 0.5;
+}
 
 function resetCamera() {
   cam.panX = 0; cam.panY = 0; cam.zoom = 1;
@@ -612,6 +628,7 @@ window.addEventListener('mousemove', e => {
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   cam.panX = drag.panX0 - (e.clientX - drag.startX) * dpr / cam.zoom;
   cam.panY = drag.panY0 - (e.clientY - drag.startY) * dpr / cam.zoom;
+  normalisePan();
 });
 window.addEventListener('mouseup', () => {
   drag = null;
@@ -638,6 +655,7 @@ canvas.addEventListener('wheel', e => {
   // keep world point under cursor fixed
   cam.panX = worldX - (cx - W * 0.5) / cam.zoom;
   cam.panY = worldY - (cy - H * 0.5) / cam.zoom;
+  normalisePan();
 
   el('info-zoom').textContent = Math.round(cam.zoom * 100) + '%';
 }, { passive: false });
@@ -693,6 +711,7 @@ canvas.addEventListener('touchmove', e => {
     const id = ids[0];
     cam.panX = drag.panX0 - (touches[id].x - drag.startX) * dpr / cam.zoom;
     cam.panY = drag.panY0 - (touches[id].y - drag.startY) * dpr / cam.zoom;
+    normalisePan();
   }
 }, { passive: false });
 
@@ -713,25 +732,62 @@ let lastRAF   = 0;
 
 const KIND = { asteroid: 0, vessel: 1, torpedo: 2, mine: 3, resource: 4 };
 
-function buildInstances(t) {
-  const rows  = [];
-  const pulse = 0.5 + 0.5 * Math.sin(t * 2.5);
+// Returns the list of tile offsets (in grid cells) that are at least
+// partially visible given the current camera.
+function visibleTiles(gridSz, cell, W, H) {
+  // Half-viewport in world-pixel space (accounting for zoom)
+  const hwx = (W * 0.5) / cam.zoom;
+  const hwy = (H * 0.5) / cam.zoom;
 
-  if (objs.asteroids)
-    for (const p of objs.asteroids)
-      rows.push(p[0], p[1], KIND.asteroid, 1.0);
-  if (objs.vessels)
-    for (const [, p] of objs.vessels)
-      rows.push(p[0], p[1], KIND.vessel, 1.0);
-  if (objs.torpedos)
-    for (const [, p] of objs.torpedos)
-      rows.push(p[0], p[1], KIND.torpedo, 1.0);
-  if (objs.mines)
-    for (const [, p] of objs.mines)
-      rows.push(p[0], p[1], KIND.mine, 1.0);
-  if (objs.farmables)
-    for (const [, p] of objs.farmables)
-      rows.push(p[0], p[1], KIND.resource, pulse);
+  // World-pixel size of one tile
+  const tileW = gridSz[0] * cell;
+  const tileH = gridSz[1] * cell;
+
+  // Camera centre in world-pixel space (relative to tile origin)
+  // The grid origin in world-pixels:  orig = (viewport - grid*cell) / 2
+  // Pan is the world-pixel offset of the camera from viewport centre.
+  // We want the range of tile indices whose bounding box overlaps the frustum.
+  const minTX = Math.floor((cam.panX - hwx) / tileW);
+  const maxTX = Math.ceil ((cam.panX + hwx) / tileW);
+  const minTY = Math.floor((cam.panY - hwy) / tileH);
+  const maxTY = Math.ceil ((cam.panY + hwy) / tileH);
+
+  const tiles = [];
+  for (let ty = minTY; ty <= maxTY; ty++)
+    for (let tx = minTX; tx <= maxTX; tx++)
+      tiles.push([tx, ty]);
+  return tiles;
+}
+
+function buildInstances(t) {
+  const rows   = [];
+  const pulse  = 0.5 + 0.5 * Math.sin(t * 2.5);
+  const gridSz = objs?.size ?? [50, 50];
+  const W = canvas.width, H = canvas.height;
+  const cell   = Math.min(W / (gridSz[0] + 1), H / (gridSz[1] + 1));
+
+  const tiles = visibleTiles(gridSz, cell, W, H);
+
+  for (const [tx, ty] of tiles) {
+    const ox = tx * gridSz[0];   // cell offset for this tile
+    const oy = ty * gridSz[1];
+
+    if (objs.asteroids)
+      for (const p of objs.asteroids)
+        rows.push(p[0] + ox, p[1] + oy, KIND.asteroid, 1.0);
+    if (objs.vessels)
+      for (const [, p] of objs.vessels)
+        rows.push(p[0] + ox, p[1] + oy, KIND.vessel, 1.0);
+    if (objs.torpedos)
+      for (const [, p] of objs.torpedos)
+        rows.push(p[0] + ox, p[1] + oy, KIND.torpedo, 1.0);
+    if (objs.mines)
+      for (const [, p] of objs.mines)
+        rows.push(p[0] + ox, p[1] + oy, KIND.mine, 1.0);
+    if (objs.farmables)
+      for (const [, p] of objs.farmables)
+        rows.push(p[0] + ox, p[1] + oy, KIND.resource, pulse);
+  }
 
   instData  = new Float32Array(rows);
   instCount = rows.length / FLOATS_PER_INST;
@@ -771,7 +827,10 @@ function render(ts) {
   const gridSz = objs?.size ?? [50, 50];
   const cell   = Math.min(W / (gridSz[0] + 1), H / (gridSz[1] + 1));
 
-  // Border
+  // Compute visible tiles (shared by border + instances)
+  const tiles = visibleTiles(gridSz, cell, W, H);
+
+  // Border — one draw per visible tile
   gl.useProgram(borderProg);
   gl.bindVertexArray(borderVao);
   gl.uniform2f(borderUGridSize, gridSz[0], gridSz[1]);
@@ -779,7 +838,10 @@ function render(ts) {
   gl.uniform1f(borderUCell,     cell);
   gl.uniform2f(borderUPan,      cam.panX, cam.panY);
   gl.uniform1f(borderUZoom,     cam.zoom);
-  gl.drawArrays(gl.LINE_STRIP, 0, 5);
+  for (const [tx, ty] of tiles) {
+    gl.uniform2f(borderUTileOffset, tx * gridSz[0], ty * gridSz[1]);
+    gl.drawArrays(gl.LINE_STRIP, 0, 5);
+  }
 
   // Instances
   buildInstances(animT);
@@ -828,23 +890,19 @@ function screenToGrid(clientX, clientY) {
   const origX = (W - gridSz[0] * cell) / 2;
   const origY = (H - gridSz[1] * cell) / 2;
 
-  return {
-    gx: Math.floor((worldPx_x - origX) / cell),
-    gy: Math.floor((worldPx_y - origY) / cell),
-    gridSz,
-  };
+  // Wrap modulo grid size to handle toric tiles
+  const rawGx = Math.floor((worldPx_x - origX) / cell);
+  const rawGy = Math.floor((worldPx_y - origY) / cell);
+  const gx = ((rawGx % gridSz[0]) + gridSz[0]) % gridSz[0];
+  const gy = ((rawGy % gridSz[1]) + gridSz[1]) % gridSz[1];
+
+  return { gx, gy, gridSz };
 }
 
 canvas.addEventListener('mousemove', e => {
   if (drag) { tooltip.style.display = 'none'; return; }
 
   const { gx, gy, gridSz } = screenToGrid(e.clientX, e.clientY);
-
-  if (gx < 0 || gy < 0 || gx >= gridSz[0] || gy >= gridSz[1]) {
-    infoCursor.textContent = '—';
-    tooltip.style.display  = 'none';
-    return;
-  }
 
   infoCursor.textContent = `(${gx}, ${gy})`;
 
