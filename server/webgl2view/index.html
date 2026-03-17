@@ -785,7 +785,7 @@ function buildInstances(t) {
       for (const [, p] of objs.mines)
         rows.push(p[0] + ox, p[1] + oy, KIND.mine, 1.0);
     if (objs.farmables)
-      for (const [, p] of objs.farmables)
+      for (const p of objs.farmables)
         rows.push(p[0] + ox, p[1] + oy, KIND.resource, pulse);
   }
 
@@ -915,7 +915,7 @@ canvas.addEventListener('mousemove', e => {
     .forEach(([name])=> lines.push(`<span class="tt-title">Torpille</span> ${name||'?'}`));
   (objs.mines    ?? []).filter(([,p])=>p[0]===gx&&p[1]===gy)
     .forEach(([name])=> lines.push(`<span class="tt-title">Mine</span> ${name||'?'}`));
-  (objs.farmables ?? []).filter(([,p])=>p[0]===gx&&p[1]===gy)
+  (objs.farmables ?? []).filter(p=>p[0]===gx&&p[1]===gy)
     .forEach(()=> lines.push(`<span class="tt-title">Ressource</span>`));
 
   if (lines.length) {
