@@ -389,66 +389,92 @@ const u2DPan     = gl.getUniformLocation(prog2D, 'uPan');
 const u2DZoom    = gl.getUniformLocation(prog2D, 'uZoom');
 
 // ═══════════════════════════════════════════════════════════
-//  3D program  (perspective billboard, instanced)
+//  3D mesh programs
 //
-//  Per-instance layout (6 floats):
-//    aGridPos3  (vec3)  — grid cell position xyz
-//    aKind      (float)
-//    aAlpha     (float)
-//    _pad       (float) — alignment to 8 floats / 32 bytes
+//  Vertex layout (mesh VBO): [x,y,z, nx,ny,nz]  — 6 floats / vertex
+//  Instance VBO (location 3): [cx, cy, cz]       — 3 floats / instance
+//  (grid cell centre, before world-space transform)
 // ═══════════════════════════════════════════════════════════
-const VS_3D = `#version 300 es
+
+const VS_3D_MESH = `#version 300 es
 precision highp float;
-// Billboard: 4 corners in clip space around projected centre
-const vec2 CORNERS[6] = vec2[6](
-  vec2(-0.5,-0.5),vec2(0.5,-0.5),vec2(-0.5,0.5),
-  vec2(0.5,-0.5), vec2(0.5,0.5), vec2(-0.5,0.5));
 
-layout(location=0) in vec3  aGridPos3;
-layout(location=1) in float aKind;
-layout(location=2) in float aAlpha;
+layout(location=0) in vec3 aPos;      // mesh vertex position (model space)
+layout(location=1) in vec3 aNormal;   // mesh vertex normal   (model space)
+layout(location=3) in vec3 aInstPos;  // instance: grid cell xyz
 
-uniform mat4  uMVP;         // projection * view
-uniform vec3  uGridSize3;   // grid dimensions in cells
-uniform float uCell3;       // world units per cell
-uniform float uBillboardSz; // base billboard size in world units
+uniform mat4  uVP;          // projection * view  (no model matrix)
+uniform vec3  uGridSize3;
+uniform float uCell3;
+uniform float uScale;       // object radius in world units
+// optional per-type rotation angle (torpedoes align to Z axis)
+uniform float uRotZ;
 
-out float vKind; out float vAlpha; out vec2 vUV;
+out vec3 vNormal;
+out vec3 vWorldPos;
 
 void main(){
-  vKind=aKind; vAlpha=aAlpha;
-  vec2 corner=CORNERS[gl_VertexID];
-  vUV=corner+0.5;  // remap to [0,1]
+  // Rotate around Z
+  float c=cos(uRotZ), s=sin(uRotZ);
+  vec3 rPos=vec3(aPos.x*c-aPos.y*s, aPos.x*s+aPos.y*c, aPos.z);
+  vec3 rNrm=vec3(aNormal.x*c-aNormal.y*s, aNormal.x*s+aNormal.y*c, aNormal.z);
 
-  // Centre of cell in world space (grid centred at origin)
-  vec3 centre=(aGridPos3+0.5)*uCell3 - uGridSize3*uCell3*0.5;
+  // Instance centre in world space
+  vec3 centre=(aInstPos+0.5)*uCell3 - uGridSize3*uCell3*0.5;
+  vec3 worldPos = centre + rPos * uScale;
 
-  // Project centre
-  vec4 clip=uMVP*vec4(centre,1.0);
-
-  // Billboard offset in clip space proportional to w (perspective-correct size)
-  float sz=uBillboardSz*clip.w;
-  clip.xy+=corner*sz*vec2(1.0, -1.0);  // y flipped for screen space
-
-  gl_Position=clip;
+  vNormal   = rNrm;
+  vWorldPos = worldPos;
+  gl_Position = uVP * vec4(worldPos, 1.0);
 }`;
 
-const prog3D     = buildProgram(VS_3D, FS_OBJECTS);
-const u3DMVP     = gl.getUniformLocation(prog3D, 'uMVP');
-const u3DGridSz  = gl.getUniformLocation(prog3D, 'uGridSize3');
-const u3DCell    = gl.getUniformLocation(prog3D, 'uCell3');
-const u3DBBSz    = gl.getUniformLocation(prog3D, 'uBillboardSz');
+const FS_3D_MESH = `#version 300 es
+precision highp float;
 
-// ── Instanced VAO/buffer — shared layout up to 3 floats pos ──
-// 2D layout: [x, y, kind, alpha]        → 4 floats = 16 bytes
-// 3D layout: [x, y, z, kind, alpha, _]  → 6 floats = 24 bytes
-// We use a single buffer and rebind strides per mode.
+in vec3 vNormal;
+in vec3 vWorldPos;
+
+uniform vec3  uColor;
+uniform vec3  uEyePos;
+
+out vec4 fragColor;
+
+void main(){
+  vec3 N = normalize(vNormal);
+  // Two lights for nice shading
+  vec3 L1 = normalize(vec3(1.0, 0.8, 1.5));
+  vec3 L2 = normalize(vec3(-0.6, -0.4, 0.6));
+  vec3 V  = normalize(uEyePos - vWorldPos);
+
+  float diff1 = max(dot(N, L1), 0.0);
+  float diff2 = max(dot(N, L2), 0.0) * 0.35;
+  float amb   = 0.12;
+
+  // Specular (Blinn-Phong)
+  vec3  H    = normalize(L1 + V);
+  float spec = pow(max(dot(N, H), 0.0), 48.0) * 0.6;
+
+  // Rim light
+  float rim = pow(1.0 - max(dot(N, V), 0.0), 3.0) * 0.25;
+
+  vec3 col = uColor * (amb + diff1 + diff2) + vec3(spec) + uColor * rim;
+  fragColor = vec4(col, 1.0);
+}`;
+
+const prog3DMesh   = buildProgram(VS_3D_MESH, FS_3D_MESH);
+const u3DVP        = gl.getUniformLocation(prog3DMesh, 'uVP');
+const u3DGridSz    = gl.getUniformLocation(prog3DMesh, 'uGridSize3');
+const u3DCell      = gl.getUniformLocation(prog3DMesh, 'uCell3');
+const u3DScale     = gl.getUniformLocation(prog3DMesh, 'uScale');
+const u3DRotZ      = gl.getUniformLocation(prog3DMesh, 'uRotZ');
+const u3DColor     = gl.getUniformLocation(prog3DMesh, 'uColor');
+const u3DEyePos    = gl.getUniformLocation(prog3DMesh, 'uEyePos');
+
+// ── 2D instance buffer ────────────────────────────────────────
 const FLOATS_2D = 4;
-const FLOATS_3D = 6;
-
 const instBuf = gl.createBuffer();
 
-// 2D VAO
+// 2D VAO (unchanged)
 const vao2D = gl.createVertexArray();
 gl.bindVertexArray(vao2D);
 gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
@@ -463,20 +489,235 @@ gl.vertexAttribPointer(2, 1, gl.FLOAT, false, FLOATS_2D*4, 12);
 gl.vertexAttribDivisor(2, 1);
 gl.bindVertexArray(null);
 
-// 3D VAO
-const vao3D = gl.createVertexArray();
-gl.bindVertexArray(vao3D);
-gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
-gl.enableVertexAttribArray(0);
-gl.vertexAttribPointer(0, 3, gl.FLOAT, false, FLOATS_3D*4, 0);
-gl.vertexAttribDivisor(0, 1);
-gl.enableVertexAttribArray(1);
-gl.vertexAttribPointer(1, 1, gl.FLOAT, false, FLOATS_3D*4, 12);
-gl.vertexAttribDivisor(1, 1);
-gl.enableVertexAttribArray(2);
-gl.vertexAttribPointer(2, 1, gl.FLOAT, false, FLOATS_3D*4, 16);
-gl.vertexAttribDivisor(2, 1);
-gl.bindVertexArray(null);
+// ── 3D per-kind instance buffers (xyz only, 3 floats each) ───
+const FLOATS_3D = 3;
+
+// instBufs3D[kind] holds flat [x,y,z, x,y,z, ...] for that kind
+const instBufs3D  = Array.from({length:5}, () => gl.createBuffer());
+const instCounts3D = new Int32Array(5);
+
+// ── Procedural mesh generation ───────────────────────────────
+// Returns { verts: Float32Array([x,y,z,nx,ny,nz,...]),
+//           idx:   Uint16Array }
+
+function makeSphere(stacks, slices, radiusFn) {
+  // radiusFn(theta, phi) → radius perturbation (or 1.0 for smooth sphere)
+  const verts = [], idx = [];
+  for (let i=0; i<=stacks; i++) {
+    const phi = Math.PI * i / stacks - Math.PI/2;
+    for (let j=0; j<=slices; j++) {
+      const theta = 2*Math.PI * j / slices;
+      const r = radiusFn ? radiusFn(theta, phi) : 1.0;
+      const x = r*Math.cos(phi)*Math.cos(theta);
+      const y = r*Math.cos(phi)*Math.sin(theta);
+      const z = r*Math.sin(phi);
+      const nl = Math.hypot(x,y,z);
+      verts.push(x,y,z, x/nl,y/nl,z/nl);
+    }
+  }
+  for (let i=0; i<stacks; i++) {
+    for (let j=0; j<slices; j++) {
+      const a = i*(slices+1)+j, b = a+slices+1;
+      idx.push(a,b,a+1, a+1,b,b+1);
+    }
+  }
+  return { verts: new Float32Array(verts), idx: new Uint16Array(idx) };
+}
+
+function makeCone(steps, height, baseR, tipY) {
+  // Vessel: cone pointing in +Z, with 3 swept fins
+  const verts = [], idx = [];
+  const tip = [0, 0, tipY];
+  // Cone body
+  for (let i=0; i<=steps; i++) {
+    const t  = i/steps, a = 2*Math.PI*t;
+    const cx = Math.cos(a)*baseR, cy = Math.sin(a)*baseR;
+    // base ring vertex
+    verts.push(cx, cy, -height/2,  Math.cos(a), Math.sin(a), 0);
+    // normal for side: slightly outward and up
+    verts.push(cx, cy, -height/2,  Math.cos(a)*0.85, Math.sin(a)*0.85, 0.53);
+  }
+  // Tip
+  const tipIdx = verts.length/6;
+  verts.push(0,0,height/2, 0,0,1);
+  // Body triangles
+  for (let i=0; i<steps; i++) {
+    const b = i*2, n = (i+1)*steps*0+((i+1)%steps)*2;
+    // base quad (2 verts per step: base normal + side normal)
+    idx.push(i*2+1, ((i+1)%steps)*2+1, tipIdx);
+  }
+  // Base cap
+  const baseCapIdx = verts.length/6;
+  verts.push(0,0,-height/2, 0,0,-1);
+  for (let i=0; i<steps; i++) {
+    idx.push(baseCapIdx, (i*2+2)%(steps*2), i*2);
+  }
+  return { verts: new Float32Array(verts), idx: new Uint16Array(idx) };
+}
+
+function makeCapsule(stacks, slices, halfLen, r) {
+  // Torpedo: capsule = cylinder + two hemisphere caps
+  const verts=[], idx=[];
+  const hemi = Math.floor(stacks/2);
+  // Top hemisphere
+  for (let i=0; i<=hemi; i++) {
+    const phi = Math.PI/2 * i/hemi;
+    for (let j=0; j<=slices; j++) {
+      const theta = 2*Math.PI*j/slices;
+      const x=r*Math.cos(phi)*Math.cos(theta);
+      const y=r*Math.cos(phi)*Math.sin(theta);
+      const z=halfLen+r*Math.sin(phi);
+      verts.push(x,y,z, x/r,y/r,(z-halfLen)/r);
+    }
+  }
+  // Cylinder (2 rings)
+  for (let i=0; i<=1; i++) {
+    const z = halfLen - 2*halfLen*i;
+    for (let j=0; j<=slices; j++) {
+      const theta=2*Math.PI*j/slices;
+      const x=r*Math.cos(theta), y=r*Math.sin(theta);
+      verts.push(x,y,z, Math.cos(theta),Math.sin(theta),0);
+    }
+  }
+  // Bottom hemisphere
+  for (let i=hemi; i>=0; i--) {
+    const phi = Math.PI/2 * i/hemi;
+    for (let j=0; j<=slices; j++) {
+      const theta=2*Math.PI*j/slices;
+      const x=r*Math.cos(phi)*Math.cos(theta);
+      const y=r*Math.cos(phi)*Math.sin(theta);
+      const z=-halfLen-r*Math.sin(phi);
+      verts.push(x,y,z, x/r,y/r,-(z+halfLen)/r);
+    }
+  }
+  const rows = hemi+1 + 2 + hemi+1;
+  for (let i=0; i<rows-1; i++) {
+    for (let j=0; j<slices; j++) {
+      const a=i*(slices+1)+j, b=a+(slices+1);
+      idx.push(a,b,a+1, a+1,b,b+1);
+    }
+  }
+  return { verts: new Float32Array(verts), idx: new Uint16Array(idx) };
+}
+
+function makeSpherWithSpikes(sphereStacks, sphereSlices, nSpikes, spikeLen) {
+  // Mine: smooth sphere + pointed spikes along ±X ±Y ±Z axes
+  const base = makeSphere(sphereStacks, sphereSlices, () => 0.45);
+  const verts = Array.from(base.verts);
+  const idx   = Array.from(base.idx);
+  const dirs  = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+  for (const [dx,dy,dz] of dirs) {
+    const baseI = verts.length/6;
+    // Spike base ring (4 verts)
+    const r = 0.08;
+    const t1 = [dy, dz, dx], t2 = [dz, dx, dy]; // perpendicular
+    for (let i=0; i<4; i++) {
+      const a = Math.PI/2*i;
+      const x=dx*0.42 + t1[0]*r*Math.cos(a) + t2[0]*r*Math.sin(a);
+      const y=dy*0.42 + t1[1]*r*Math.cos(a) + t2[1]*r*Math.sin(a);
+      const z=dz*0.42 + t1[2]*r*Math.cos(a) + t2[2]*r*Math.sin(a);
+      verts.push(x,y,z, dx,dy,dz);
+    }
+    // Spike tip
+    const tipI = verts.length/6;
+    verts.push(dx*(0.42+spikeLen), dy*(0.42+spikeLen), dz*(0.42+spikeLen), dx,dy,dz);
+    // Triangles
+    for (let i=0; i<4; i++) {
+      idx.push(baseI+i, baseI+(i+1)%4, tipI);
+    }
+  }
+  return { verts: new Float32Array(verts), idx: new Uint16Array(idx) };
+}
+
+function makeOctahedron() {
+  // Resource: regular octahedron
+  const s = 0.5;
+  const verts = new Float32Array([
+    // top
+     0, 0, s,  0, 0, 1,
+    // bottom
+     0, 0,-s,  0, 0,-1,
+    // equator
+     s, 0, 0,  1, 0, 0,
+    -s, 0, 0, -1, 0, 0,
+     0, s, 0,  0, 1, 0,
+     0,-s, 0,  0,-1, 0,
+  ]);
+  // Flat-shaded faces (each face has computed normal)
+  const faces = [
+    [0,2,4],[0,4,3],[0,3,5],[0,5,2],
+    [1,4,2],[1,3,4],[1,5,3],[1,2,5],
+  ];
+  const fv = [], fi = [];
+  for (const [a,b,c] of faces) {
+    const getV = i => [verts[i*6],verts[i*6+1],verts[i*6+2]];
+    const va=getV(a), vb=getV(b), vc=getV(c);
+    const ex=[vb[0]-va[0],vb[1]-va[1],vb[2]-va[2]];
+    const ey=[vc[0]-va[0],vc[1]-va[1],vc[2]-va[2]];
+    const nx=ey[1]*ex[2]-ey[2]*ex[1];
+    const ny=ey[2]*ex[0]-ey[0]*ex[2];
+    const nz=ey[0]*ex[1]-ey[1]*ex[0];
+    const nl=Math.hypot(nx,ny,nz);
+    const base=fv.length/6;
+    for (const v of [va,vb,vc]) fv.push(...v, nx/nl,ny/nl,nz/nl);
+    fi.push(base, base+1, base+2);
+  }
+  return { verts: new Float32Array(fv), idx: new Uint16Array(fi) };
+}
+
+// ── Build and upload meshes ───────────────────────────────────
+// Each entry: { vbo, ebo, count, vao3D, color[3], scale, rotZ }
+const hash3 = v => { let h=2166136261; for(const c of v){h=(h^c.charCodeAt?c.charCodeAt(0):c)*16777619|0} return h>>>0; };
+
+function buildMeshVAO(mesh, instBuf3D) {
+  const vbo = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.bufferData(gl.ARRAY_BUFFER, mesh.verts, gl.STATIC_DRAW);
+
+  const ebo = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.idx, gl.STATIC_DRAW);
+
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  // aPos (loc 0)
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0);
+  // aNormal (loc 1)
+  gl.enableVertexAttribArray(1);
+  gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);
+
+  // aInstPos (loc 3) — per-instance
+  gl.bindBuffer(gl.ARRAY_BUFFER, instBuf3D);
+  gl.enableVertexAttribArray(3);
+  gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 12, 0);
+  gl.vertexAttribDivisor(3, 1);
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
+  gl.bindVertexArray(null);
+  return { vao, count: mesh.idx.length };
+}
+
+// Build meshes
+const meshData = [
+  // 0 asteroid
+  (() => { const m=makeSphere(10,14,(t,p)=>{ let r=1; const h=Math.sin(t*3.1+p*2.3); r+=h*0.18; return r; }); return { m, color:[0.69,0.25,0.06], scale:0.38, rotZ:0 }; })(),
+  // 1 vessel — cone
+  (() => { const m=makeCone(12,0.8,0.32,0.35); return { m, color:[1.0,0.82,0.18], scale:0.42, rotZ:0 }; })(),
+  // 2 torpedo — capsule
+  (() => { const m=makeCapsule(6,10,0.38,0.14); return { m, color:[1.0,0.22,0.18], scale:0.36, rotZ:0 }; })(),
+  // 3 mine — sphere with spikes
+  (() => { const m=makeSpherWithSpikes(8,12,6,0.32); return { m, color:[0.78,0.12,0.82], scale:0.38, rotZ:0 }; })(),
+  // 4 resource — octahedron
+  (() => { const m=makeOctahedron(); return { m, color:[0.10,0.82,0.48], scale:0.38, rotZ:0 }; })(),
+];
+
+const meshObjs = meshData.map(({m,color,scale,rotZ}, i) => ({
+  ...buildMeshVAO(m, instBufs3D[i]),
+  color, scale, rotZ,
+}));
 
 // ═══════════════════════════════════════════════════════════
 //  Background (full-screen nebula + stars)
@@ -635,7 +876,7 @@ function buildMVP(W, H) {
   ];
   const view = m4.lookAt(eye, [cx, cy, cz], [0, 0, 1]);
   const proj = m4.perspective(Math.PI / 3, W / H, 0.1, cam3D.radius * 10);
-  return { mvp: m4.multiply(proj, view), cell };
+  return { mvp: m4.multiply(proj, view), cell, eye };
 }
 
 function normalisePan2D() {
@@ -829,49 +1070,60 @@ function visibleTiles2D(gridSz, cell, W, H) {
   return tiles;
 }
 
-// For 3D: show a limited neighbourhood of tiles around origin
-// (showing ±1 tile per axis covers the toric wrapping visually)
+// For 3D: canonical tile + 6 adjacent faces for toric wrapping
 function visibleTiles3D() {
   return [
     [0,0,0],
-    // adjacent faces
     [1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1],
   ];
 }
 
-function buildInstances() {
-  const rows   = [];
-  const gridSz = objs?.size ?? [50, 50];
+// ── 3D instance buffers: one Float32Array per kind ───────────
+const inst3DData = Array.from({length:5}, () => []);
 
-  if (is3D()) {
-    const tiles = visibleTiles3D();
-    for (const [tx,ty,tz] of tiles) {
-      const ox = tx*gridSz[0], oy = ty*gridSz[1], oz = tz*gridSz[2];
-      const push = (p, kind) =>
-        rows.push(p[0]+ox, p[1]+oy, (p[2]??0)+oz, kind, 1.0, 0);
-      if (objs.asteroids) for (const p of objs.asteroids) push(p, KIND.asteroid);
-      if (objs.vessels)   for (const [,p] of objs.vessels) push(p, KIND.vessel);
-      if (objs.torpedos)  for (const [,p] of objs.torpedos) push(p, KIND.torpedo);
-      if (objs.mines)     for (const [,p] of objs.mines) push(p, KIND.mine);
-      if (objs.farmables) for (const p of objs.farmables) push(p, KIND.resource);
-    }
-  } else {
-    const W = canvas.width, H = canvas.height;
-    const cell = Math.min(W/(gridSz[0]+1), H/(gridSz[1]+1));
-    const tiles = visibleTiles2D(gridSz, cell, W, H);
-    for (const [tx,ty] of tiles) {
-      const ox = tx*gridSz[0], oy = ty*gridSz[1];
-      const push = (p, kind) => rows.push(p[0]+ox, p[1]+oy, kind, 1.0);
-      if (objs.asteroids) for (const p of objs.asteroids) push(p, KIND.asteroid);
-      if (objs.vessels)   for (const [,p] of objs.vessels) push(p, KIND.vessel);
-      if (objs.torpedos)  for (const [,p] of objs.torpedos) push(p, KIND.torpedo);
-      if (objs.mines)     for (const [,p] of objs.mines) push(p, KIND.mine);
-      if (objs.farmables) for (const p of objs.farmables) push(p, KIND.resource);
+function buildInstances3D() {
+  const gridSz = objs?.size ?? [50,50,50];
+  for (let k=0;k<5;k++) inst3DData[k] = [];
+  const tiles = visibleTiles3D();
+  for (const [tx,ty,tz] of tiles) {
+    const ox=tx*gridSz[0], oy=ty*gridSz[1], oz=tz*(gridSz[2]??0);
+    const push = (p, kind) => {
+      inst3DData[kind].push(p[0]+ox, p[1]+oy, (p[2]??0)+oz);
+    };
+    if (objs.asteroids) for (const p of objs.asteroids) push(p, KIND.asteroid);
+    if (objs.vessels)   for (const [,p] of objs.vessels) push(p, KIND.vessel);
+    if (objs.torpedos)  for (const [,p] of objs.torpedos) push(p, KIND.torpedo);
+    if (objs.mines)     for (const [,p] of objs.mines) push(p, KIND.mine);
+    if (objs.farmables) for (const p of objs.farmables) push(p, KIND.resource);
+  }
+  for (let k=0;k<5;k++) {
+    const data = new Float32Array(inst3DData[k]);
+    instCounts3D[k] = data.length / FLOATS_3D;
+    if (instCounts3D[k] > 0) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, instBufs3D[k]);
+      gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
     }
   }
+}
 
+// ── 2D instance buffer ────────────────────────────────────────
+function buildInstances2D() {
+  const rows   = [];
+  const gridSz = objs?.size ?? [50, 50];
+  const W = canvas.width, H = canvas.height;
+  const cell = Math.min(W/(gridSz[0]+1), H/(gridSz[1]+1));
+  const tiles = visibleTiles2D(gridSz, cell, W, H);
+  for (const [tx,ty] of tiles) {
+    const ox = tx*gridSz[0], oy = ty*gridSz[1];
+    const push = (p, kind) => rows.push(p[0]+ox, p[1]+oy, kind, 1.0);
+    if (objs.asteroids) for (const p of objs.asteroids) push(p, KIND.asteroid);
+    if (objs.vessels)   for (const [,p] of objs.vessels) push(p, KIND.vessel);
+    if (objs.torpedos)  for (const [,p] of objs.torpedos) push(p, KIND.torpedo);
+    if (objs.mines)     for (const [,p] of objs.mines) push(p, KIND.mine);
+    if (objs.farmables) for (const p of objs.farmables) push(p, KIND.resource);
+  }
   instData  = new Float32Array(rows);
-  instCount = rows.length / (is3D() ? FLOATS_3D : FLOATS_2D);
+  instCount = rows.length / FLOATS_2D;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -908,9 +1160,9 @@ function render(ts) {
     gl.enable(gl.DEPTH_TEST);
     gl.clear(gl.DEPTH_BUFFER_BIT);
 
-    const { mvp, cell } = buildMVP(W, H);
+    const { mvp, cell, eye } = buildMVP(W, H);
 
-    // Wireframe cube borders (toric tiles)
+    // Wireframe cube borders
     gl.useProgram(border3DProg);
     gl.bindVertexArray(border3DVao);
     gl.uniformMatrix4fv(brd3DMVP, false, mvp);
@@ -921,24 +1173,22 @@ function render(ts) {
       gl.drawArrays(gl.LINES, 0, 24);
     }
 
-    // Instances (billboards)
-    buildInstances();
-    if (instCount > 0) {
-      gl.useProgram(prog3D);
-      gl.bindVertexArray(vao3D);
-      gl.uniformMatrix4fv(u3DMVP, false, mvp);
-      gl.uniform3f(u3DGridSz, gridSz[0], gridSz[1], gridSz[2]);
-      gl.uniform1f(u3DCell, cell);
-      // billboard size: ~0.9 cells in clip space
-      gl.uniform1f(u3DBBSz, 0.9 * cell / cam3D.radius);
+    // 3D mesh instances (one draw call per kind)
+    buildInstances3D();
+    gl.useProgram(prog3DMesh);
+    gl.uniformMatrix4fv(u3DVP,     false, mvp);
+    gl.uniform3f(u3DGridSz, gridSz[0], gridSz[1], gridSz[2]);
+    gl.uniform1f(u3DCell,   cell);
+    gl.uniform3fv(u3DEyePos, eye);
 
-      gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
-      gl.bufferData(gl.ARRAY_BUFFER, instData, gl.DYNAMIC_DRAW);
-
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, instCount);
-      gl.disable(gl.BLEND);
+    for (let k=0; k<5; k++) {
+      if (instCounts3D[k] === 0) continue;
+      const mo = meshObjs[k];
+      gl.bindVertexArray(mo.vao);
+      gl.uniform3fv(u3DColor, mo.color);
+      gl.uniform1f(u3DScale,  mo.scale * cell);
+      gl.uniform1f(u3DRotZ,   mo.rotZ);
+      gl.drawElementsInstanced(gl.TRIANGLES, mo.count, gl.UNSIGNED_SHORT, 0, instCounts3D[k]);
     }
     gl.disable(gl.DEPTH_TEST);
 
@@ -960,7 +1210,7 @@ function render(ts) {
     }
 
     // 2D instances
-    buildInstances();
+    buildInstances2D();
     if (instCount > 0) {
       gl.useProgram(prog2D);
       gl.bindVertexArray(vao2D);
