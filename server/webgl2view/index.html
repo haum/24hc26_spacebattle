@@ -1030,18 +1030,15 @@ const CELL_3D = 2.5;
 function buildMVP(W, H) {
   const gridSz = objs.size;
   const cell   = CELL_3D;
-  // Orbit centre: geometric centre of the grid, never affected by pan
-  const ox = gridSz[0] * cell * 0.5;
-  const oy = gridSz[1] * cell * 0.5;
-  const oz = gridSz[2] * cell * 0.5;
-  // Eye orbits around the grid centre
+  // World-space centre of the grid is (0,0,0) — the shader centres the grid at origin.
+  // Eye orbits around (0,0,0).
   const eye = [
-    ox + cam3D.radius * Math.cos(cam3D.phi) * Math.cos(cam3D.theta),
-    oy + cam3D.radius * Math.cos(cam3D.phi) * Math.sin(cam3D.theta),
-    oz + cam3D.radius * Math.sin(cam3D.phi),
+    cam3D.radius * Math.cos(cam3D.phi) * Math.cos(cam3D.theta),
+    cam3D.radius * Math.cos(cam3D.phi) * Math.sin(cam3D.theta),
+    cam3D.radius * Math.sin(cam3D.phi),
   ];
-  // Look-at target: grid centre shifted by pan
-  const target = [ox + cam3D.panX, oy + cam3D.panY, oz + cam3D.panZ];
+  // Look-at target: origin shifted by pan
+  const target = [cam3D.panX, cam3D.panY, cam3D.panZ];
   const view = m4.lookAt(eye, target, [0, 0, 1]);
   // far covers the entire toric neighbourhood (±1 tile) regardless of zoom
   const far  = Math.max(...gridSz) * CELL_3D * 6;
