@@ -866,46 +866,88 @@ gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0);
 gl.bindVertexArray(null);
 
 // ═══════════════════════════════════════════════════════════
-//  3D trail program
+//  Trail programs  (2D + 3D share same fragment shader)
 // ═══════════════════════════════════════════════════════════
-const TRAIL_VS = `#version 300 es
-precision highp float;
-layout(location=0) in vec3 aPos;
-layout(location=1) in float aAge;   // 0=oldest … 1=newest
-uniform mat4 uVP;
-uniform vec3 uGridSize3;
-uniform float uCell3;
-uniform vec3 uColor;
-out float vAge;
-void main(){
-  vAge = aAge;
-  vec3 world = (aPos + 0.5) * uCell3 - uGridSize3 * uCell3 * 0.5;
-  gl_Position = uVP * vec4(world, 1.0);
-}`;
 const TRAIL_FS = `#version 300 es
 precision highp float;
 in float vAge;
 uniform vec3 uColor;
 out vec4 fragColor;
 void main(){
-  // fade from transparent (oldest) to opaque (newest)
   float alpha = pow(vAge, 1.5) * 0.75;
   fragColor = vec4(uColor, alpha);
 }`;
 
-const trailProg     = buildProgram(TRAIL_VS, TRAIL_FS);
-const trailUVP      = gl.getUniformLocation(trailProg, 'uVP');
-const trailUGridSz  = gl.getUniformLocation(trailProg, 'uGridSize3');
-const trailUCell    = gl.getUniformLocation(trailProg, 'uCell3');
-const trailUColor   = gl.getUniformLocation(trailProg, 'uColor');
+// ── 3D trail vertex shader ───────────────────────────────────
+const TRAIL3D_VS = `#version 300 es
+precision highp float;
+layout(location=0) in vec3 aPos;
+layout(location=1) in float aAge;
+uniform mat4 uVP;
+uniform vec3 uGridSize3;
+uniform float uCell3;
+out float vAge;
+void main(){
+  vAge = aAge;
+  vec3 world = (aPos + 0.5) * uCell3 - uGridSize3 * uCell3 * 0.5;
+  gl_Position = uVP * vec4(world, 1.0);
+}`;
 
-const trailVao = gl.createVertexArray();
+const trail3DProg    = buildProgram(TRAIL3D_VS, TRAIL_FS);
+const trail3DUVP     = gl.getUniformLocation(trail3DProg, 'uVP');
+const trail3DUGridSz = gl.getUniformLocation(trail3DProg, 'uGridSize3');
+const trail3DUCell   = gl.getUniformLocation(trail3DProg, 'uCell3');
+const trail3DUColor  = gl.getUniformLocation(trail3DProg, 'uColor');
+
+// ── 2D trail vertex shader ───────────────────────────────────
+const TRAIL2D_VS = `#version 300 es
+precision highp float;
+layout(location=0) in vec2 aPos;    // grid cell position xy
+layout(location=1) in float aAge;
+uniform vec2  uGridSize;
+uniform vec2  uViewport;
+uniform float uCell;
+uniform vec2  uPan;
+uniform float uZoom;
+out float vAge;
+void main(){
+  vAge = aAge;
+  // centre of cell in world-pixel space (same as object shader, +0.5 offset)
+  vec2 orig = (uViewport - uGridSize * uCell) * 0.5;
+  vec2 worldPx = orig + (aPos + 0.5) * uCell;
+  vec2 centre = uViewport * 0.5;
+  vec2 screenPx = (worldPx - centre - uPan) * uZoom + centre;
+  vec2 ndc = (screenPx / uViewport) * 2.0 - 1.0; ndc.y = -ndc.y;
+  gl_Position = vec4(ndc, 0.0, 1.0);
+}`;
+
+const trail2DProg    = buildProgram(TRAIL2D_VS, TRAIL_FS);
+const trail2DUGridSz = gl.getUniformLocation(trail2DProg, 'uGridSize');
+const trail2DUVP     = gl.getUniformLocation(trail2DProg, 'uViewport');
+const trail2DUCell   = gl.getUniformLocation(trail2DProg, 'uCell');
+const trail2DUPan    = gl.getUniformLocation(trail2DProg, 'uPan');
+const trail2DUZoom   = gl.getUniformLocation(trail2DProg, 'uZoom');
+const trail2DUColor  = gl.getUniformLocation(trail2DProg, 'uColor');
+
+// ── Shared VAOs (pos 2D or 3D + age) ────────────────────────
 const trailPosBuf = gl.createBuffer();
 const trailAgeBuf = gl.createBuffer();
-gl.bindVertexArray(trailVao);
+
+const trail3DVao = gl.createVertexArray();
+gl.bindVertexArray(trail3DVao);
 gl.bindBuffer(gl.ARRAY_BUFFER, trailPosBuf);
 gl.enableVertexAttribArray(0);
 gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0);
+gl.bindBuffer(gl.ARRAY_BUFFER, trailAgeBuf);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 4, 0);
+gl.bindVertexArray(null);
+
+const trail2DVao = gl.createVertexArray();
+gl.bindVertexArray(trail2DVao);
+gl.bindBuffer(gl.ARRAY_BUFFER, trailPosBuf);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);   // only xy
 gl.bindBuffer(gl.ARRAY_BUFFER, trailAgeBuf);
 gl.enableVertexAttribArray(1);
 gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 4, 0);
@@ -947,41 +989,58 @@ function recordTrails(vessels) {
   for (const name of trails.keys()) if (!active.has(name)) trails.delete(name);
 }
 
-function drawTrails(mvp, gridSz, cell) {
+// ── Upload trail geometry (shared) ───────────────────────────
+function uploadTrail(pts, stride) {
+  const n = pts.length;
+  const posData = new Float32Array(n * stride);
+  const ageData = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < stride; j++) posData[i*stride+j] = pts[i][j] ?? 0;
+    ageData[i] = i / (n - 1);
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, trailPosBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, posData, gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, trailAgeBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, ageData, gl.DYNAMIC_DRAW);
+  return n;
+}
+
+function drawTrails3D(mvp, gridSz, cell) {
   if (!showTrails || trails.size === 0) return;
-
-  gl.useProgram(trailProg);
-  gl.bindVertexArray(trailVao);
-  gl.uniformMatrix4fv(trailUVP, false, mvp);
-  gl.uniform3f(trailUGridSz, gridSz[0], gridSz[1], gridSz[2]);
-  gl.uniform1f(trailUCell, cell);
-
+  gl.useProgram(trail3DProg);
+  gl.bindVertexArray(trail3DVao);
+  gl.uniformMatrix4fv(trail3DUVP, false, mvp);
+  gl.uniform3f(trail3DUGridSz, gridSz[0], gridSz[1], gridSz[2]);
+  gl.uniform1f(trail3DUCell, cell);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
   for (const [, trail] of trails) {
-    const pts = trail.positions;
-    if (pts.length < 2) continue;
-    const n = pts.length;
-
-    const posData = new Float32Array(n * 3);
-    const ageData = new Float32Array(n);
-    for (let i = 0; i < n; i++) {
-      posData[i*3]   = pts[i][0];
-      posData[i*3+1] = pts[i][1];
-      posData[i*3+2] = pts[i][2];
-      ageData[i] = i / (n - 1);
-    }
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, trailPosBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, posData, gl.DYNAMIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, trailAgeBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, ageData, gl.DYNAMIC_DRAW);
-
-    gl.uniform3fv(trailUColor, trail.color);
+    if (trail.positions.length < 2) continue;
+    const n = uploadTrail(trail.positions, 3);
+    gl.uniform3fv(trail3DUColor, trail.color);
     gl.drawArrays(gl.LINE_STRIP, 0, n);
   }
+  gl.disable(gl.BLEND);
+  gl.bindVertexArray(null);
+}
 
+function drawTrails2D(gridSz, cell, W, H) {
+  if (!showTrails || trails.size === 0) return;
+  gl.useProgram(trail2DProg);
+  gl.bindVertexArray(trail2DVao);
+  gl.uniform2f(trail2DUGridSz, gridSz[0], gridSz[1]);
+  gl.uniform2f(trail2DUVP, W, H);
+  gl.uniform1f(trail2DUCell, cell);
+  gl.uniform2f(trail2DUPan, cam2D.panX, cam2D.panY);
+  gl.uniform1f(trail2DUZoom, cam2D.zoom);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  for (const [, trail] of trails) {
+    if (trail.positions.length < 2) continue;
+    const n = uploadTrail(trail.positions, 2);
+    gl.uniform3fv(trail2DUColor, trail.color);
+    gl.drawArrays(gl.LINE_STRIP, 0, n);
+  }
   gl.disable(gl.BLEND);
   gl.bindVertexArray(null);
 }
@@ -1348,7 +1407,7 @@ function render(ts) {
       gl.uniform1f(u3DRotZ,   mo.rotZ);
       gl.drawElementsInstanced(gl.TRIANGLES, mo.count, gl.UNSIGNED_SHORT, 0, instCounts3D[k]);
     }
-    drawTrails(mvp, gridSz, cell);
+    drawTrails3D(mvp, gridSz, cell);
     gl.disable(gl.DEPTH_TEST);
 
   } else {
@@ -1387,6 +1446,7 @@ function render(ts) {
       gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, instCount);
       gl.disable(gl.BLEND);
     }
+    drawTrails2D(gridSz, cell, W, H);
   }
 }
 requestAnimationFrame(render);
@@ -1550,7 +1610,7 @@ function updateModeUI() {
   canvas.classList.toggle('mode3d', three);
   el('hint-2d').style.display    = three ? 'none' : '';
   el('hint-3d').style.display    = three ? '' : 'none';
-  el('btn-trails').style.display = three ? '' : 'none';
+  el('btn-trails').style.display = '';   // visible in both 2D and 3D
 }
 
 function connect(universe, key) {
@@ -1575,7 +1635,7 @@ function connect(universe, key) {
       el('info-size').textContent     = (msg.size ?? []).join(' × ');
       el('info-vessels').textContent  = (msg.vessels ?? []).length;
       updateModeUI();
-      if (is3D()) recordTrails(msg.vessels);
+      recordTrails(msg.vessels);
     } else {
       console.warn('Unknown message:', msg);
     }
