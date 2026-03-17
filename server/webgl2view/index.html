@@ -709,14 +709,15 @@ function meshBoundingRadius(mesh) {
   return r;
 }
 
-// Visual fill factor: how much of the cell each object type should occupy (0..1)
-const FILL = { asteroid: 0.46, vessel: 0.36, torpedo: 0.28, mine: 0.38, resource: 0.32 };
+// Visual fill factor: fraction of the cell radius each object should occupy.
+// Asteroid is intentionally larger (obstacle), others are comparable.
+const FILL = { asteroid: 0.46, vessel: 0.44, torpedo: 0.38, mine: 0.42, resource: 0.38 };
 
 const meshData = [
   // 0 asteroid
   (() => { const m=makeSphere(10,14,(t,p)=>{ let r=1; const h=Math.sin(t*3.1+p*2.3); r+=h*0.18; return r; }); return { m, color:[0.69,0.25,0.06], fill:FILL.asteroid, rotZ:0 }; })(),
-  // 1 vessel — cone
-  (() => { const m=makeCone(12,0.8,0.32,0.35); return { m, color:[1.0,0.82,0.18], fill:FILL.vessel, rotZ:0 }; })(),
+  // 1 vessel — cone (wider base for better visibility)
+  (() => { const m=makeCone(12,0.9,0.55,0.45); return { m, color:[1.0,0.82,0.18], fill:FILL.vessel, rotZ:0 }; })(),
   // 2 torpedo — capsule
   (() => { const m=makeCapsule(6,10,0.38,0.14); return { m, color:[1.0,0.22,0.18], fill:FILL.torpedo, rotZ:0 }; })(),
   // 3 mine — sphere with spikes
