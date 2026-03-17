@@ -200,7 +200,7 @@
 
   <div id="zoom-hint">
     <span id="hint-2d">Molette : zoom &nbsp;|&nbsp; Glisser : pan<br>Double-clic : réinitialiser</span>
-    <span id="hint-3d" style="display:none">Molette : zoom &nbsp;|&nbsp; Clic gauche : orbite<br>Clic droit : pan &nbsp;|&nbsp; Double-clic : réinitialiser</span>
+    <span id="hint-3d" style="display:none">Molette : zoom &nbsp;|&nbsp; Clic gauche : pan<br>Clic droit : orbite &nbsp;|&nbsp; Double-clic : réinitialiser</span>
   </div>
 
   <button id="btn-reset">⟳ Réinitialiser vue</button>
@@ -660,7 +660,7 @@ let drag = null;
 
 canvas.addEventListener('mousedown', e => {
   if (is3D()) {
-    const mode = e.button === 2 ? 'pan3d' : 'orbit3d';
+    const mode = e.button === 2 ? 'orbit3d' : 'pan3d';
     drag = { mode,
       startX: e.clientX, startY: e.clientY,
       theta0: cam3D.theta, phi0: cam3D.phi,
