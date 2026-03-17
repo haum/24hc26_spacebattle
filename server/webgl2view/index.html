@@ -721,8 +721,10 @@ canvas.addEventListener('wheel', e => {
   e.preventDefault();
   const factor = e.deltaY < 0 ? 1/1.15 : 1.15;
   if (is3D()) {
-    cam3D.radius = Math.max(5, Math.min(cam3D.radius * 10, cam3D.radius * factor));
-    el('info-zoom').textContent = Math.round(100 / factor) + '%';
+    const gridSz = objs?.size ?? [50, 50, 50];
+    const rMin = 2, rMax = Math.max(...gridSz) * 8;
+    cam3D.radius = Math.max(rMin, Math.min(rMax, cam3D.radius * factor));
+    el('info-zoom').textContent = Math.round(cam3D.radius) + ' u';
   } else {
     const dpr  = Math.max(1, window.devicePixelRatio || 1);
     const rect = canvas.getBoundingClientRect();
