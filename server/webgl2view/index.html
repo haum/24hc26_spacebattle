@@ -1107,7 +1107,9 @@ window.addEventListener('mousemove', e => {
                   drag.phi0 + dy * 0.007));
   } else if (drag.mode === 'pan3d') {
     // Pan in the camera-right and camera-up directions
-    const speed = cam3D.radius * 0.002;
+    const gridSz = objs?.size ?? [50,50,50];
+    const minSpeed = Math.max(...gridSz) * CELL_3D * 0.003;
+    const speed = Math.max(cam3D.radius * 0.002, minSpeed);
     const right = [
       -Math.sin(cam3D.theta),
        Math.cos(cam3D.theta),
