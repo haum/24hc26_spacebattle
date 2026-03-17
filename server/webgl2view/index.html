@@ -956,7 +956,7 @@ gl.bindVertexArray(null);
 // Trail state — one entry per vessel name
 // trails[name] = { positions: [[x,y,z], …], color: [r,g,b] }
 const trails     = new Map();
-let   showTrails = false;
+let   showTrails = true;
 const MAX_TRAIL  = 300;   // max points per vessel
 
 // Deterministic colour from vessel name
@@ -1045,7 +1045,8 @@ function drawTrails2D(gridSz, cell, W, H) {
   gl.bindVertexArray(null);
 }
 
-// Toggle button
+// Toggle button — initialise to match showTrails default
+el('btn-trails').classList.add('active');
 el('btn-trails').addEventListener('click', () => {
   showTrails = !showTrails;
   el('btn-trails').classList.toggle('active', showTrails);
