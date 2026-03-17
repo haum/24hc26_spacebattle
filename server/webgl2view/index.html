@@ -618,9 +618,13 @@ const ZOOM_MIN = 0.1, ZOOM_MAX = 40;
 function is3D() { return (objs?.size?.length ?? 2) >= 3; }
 
 // ── Build MVP for 3D camera ──────────────────────────────────
+// cell is always 1 world-unit per grid cell — fixed, independent of zoom.
+// cam3D.radius is the orbital distance in world units.
+const CELL_3D = 1.0;
+
 function buildMVP(W, H) {
   const gridSz = objs.size;
-  const cell   = cam3D.radius / Math.max(...gridSz);
+  const cell   = CELL_3D;
   const cx = gridSz[0] * cell * 0.5 + cam3D.panX;
   const cy = gridSz[1] * cell * 0.5 + cam3D.panY;
   const cz = gridSz[2] * cell * 0.5 + cam3D.panZ;
@@ -648,7 +652,7 @@ function resetCamera() {
   cam3D.theta = Math.PI/4; cam3D.phi = Math.PI/5;
   cam3D.panX = 0; cam3D.panY = 0; cam3D.panZ = 0;
   const gridSz = objs?.size ?? [50, 50, 50];
-  cam3D.radius = Math.max(...gridSz) * 2.0;
+  cam3D.radius = Math.max(...gridSz) * CELL_3D * 2.0;
   el('info-zoom').textContent = '100%';
 }
 
@@ -722,7 +726,8 @@ canvas.addEventListener('wheel', e => {
   const factor = e.deltaY < 0 ? 1/1.15 : 1.15;
   if (is3D()) {
     const gridSz = objs?.size ?? [50, 50, 50];
-    const rMin = 2, rMax = Math.max(...gridSz) * 8;
+    const rMin = CELL_3D * 2;
+    const rMax = Math.max(...gridSz) * CELL_3D * 8;
     cam3D.radius = Math.max(rMin, Math.min(rMax, cam3D.radius * factor));
     el('info-zoom').textContent = Math.round(cam3D.radius) + ' u';
   } else {
