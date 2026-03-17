@@ -376,7 +376,7 @@ void main() {
 
   } else {
     float d = sdCircle(vUV, 0.32);
-    alpha = fill(d, aa) * mix(0.6, 1.0, vAlpha);
+    alpha = fill(d, aa);
     col   = vec3(0.10, 0.82, 0.48);
   }
 
@@ -761,7 +761,7 @@ function visibleTiles(gridSz, cell, W, H) {
 
 function buildInstances(t) {
   const rows   = [];
-  const pulse  = 0.5 + 0.5 * Math.sin(t * 2.5);
+
   const gridSz = objs?.size ?? [50, 50];
   const W = canvas.width, H = canvas.height;
   const cell   = Math.min(W / (gridSz[0] + 1), H / (gridSz[1] + 1));
@@ -786,7 +786,7 @@ function buildInstances(t) {
         rows.push(p[0] + ox, p[1] + oy, KIND.mine, 1.0);
     if (objs.farmables)
       for (const p of objs.farmables)
-        rows.push(p[0] + ox, p[1] + oy, KIND.resource, pulse);
+        rows.push(p[0] + ox, p[1] + oy, KIND.resource, 1.0);
   }
 
   instData  = new Float32Array(rows);
