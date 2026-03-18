@@ -1,6 +1,14 @@
-Bienvenue dans les 24h du Code 2026 ! Vous allez affronter les autres équipes
+Bienvenue dans les 24h du Code 2026 !
+
+Vous allez affronter les autres équipes
 dans un univers spatial en pilotant une flotte de vaisseaux. À vous d'écrire le
 code qui les fera survivre — et vaincre.
+
+.. figure:: _static/illustration.jpg
+    :align: center
+    
+    Marabunta - Bataille spatiale
+
 
 Vue d'ensemble
 ==============
