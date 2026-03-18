@@ -433,22 +433,3 @@ inutile, donc parfaitement indispensable.
    > {"type": "ping"}
    > {"type": "ping", "n": 42}
    < {"type": "pong", "n": 42}
-
-
-Conseils stratégiques
-======================
-
-- **Répartissez vos stats** en fonction de votre stratégie : un vaisseau rapide
-  avec peu de HP peut servir d'éclaireur, tandis qu'un vaisseau lourd avec
-  beaucoup de HP encaissera les dégâts.
-- **Gérez votre énergie** : certaines actions coûtent cher (laser = 50).
-  Attendez que votre réserve soit suffisante avant d'attaquer.
-- **Le radar passif est gratuit** : vous recevez automatiquement les explosions
-  et déplacements proches. Servez-vous-en pour vous orienter sans dépenser
-  d'énergie.
-- **Les mines sont persistantes** : posées intelligemment sur des couloirs de
-  passage, elles peuvent faire des ravages.
-- **L'univers est toroïdal** : tenez compte du fait que les bords se rejoignent
-  pour calculer les distances et les trajectoires.
-- **Un vaisseau détruit laisse de l'énergie** : récupérer les ressources
-  adverses peut vous donner un avantage décisif.
