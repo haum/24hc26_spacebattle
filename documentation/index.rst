@@ -422,10 +422,11 @@ Si deux vaisseaux se retrouvent sur la même case, ils infligent chacun **15
 dégâts** à l'autre.
 
 
-ping / pong
-===========
+Ping-pong
+=========
 
-Disponible avant et pendant la partie, pour vérifier la connexion.
+Disponible avant et pendant la partie, pour vérifier la connexion. Totalement
+inutile, donc parfaitement indispensable.
 
 .. code-block::
 
