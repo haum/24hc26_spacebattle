@@ -184,7 +184,7 @@ async def start_server():
         web.get('/ws', mainws),
     ])
 
-    for d in ['doc', '2dview']:
+    for d in ['doc', 'viewer']:
         if os.path.isdir(d):
             app.router.add_route('GET', f'/{d}', redirect301(d+'/'))
             app.router.add_route('GET', f'/{d}/', static_file(d+'/index.html'))

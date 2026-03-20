@@ -45,6 +45,9 @@ class Observer:
                         )
                         for m in self.u.iter('mine')
                     ],
+                    'farmables': [
+                        f.position for f in self.u.iter("farmable")
+                    ],
                 })
                 await asyncio.sleep(self.delay)
             except ReferenceError:

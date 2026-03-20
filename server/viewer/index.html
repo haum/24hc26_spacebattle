@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>24hc26 — WebGL2 View</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100vw; height: 100vh;
+      overflow: hidden;
+      background: #0a0a12;
+      font-family: 'Courier New', monospace;
+    }
+
+    canvas#gl {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: block;
+      cursor: grab;
+    }
+    canvas#gl.dragging  { cursor: grabbing; }
+    canvas#gl.mode3d    { cursor: crosshair; }
+    canvas#gl.orbiting  { cursor: move; }
+
+    #hud {
+      position: absolute; inset: 0;
+      pointer-events: none;
+    }
+
+    #info-panel {
+      position: absolute;
+      top: 16px; left: 16px;
+      color: #c8d8f0;
+      font-size: 13px;
+      line-height: 1.7;
+      text-shadow: 0 0 6px #000a;
+    }
+    #info-panel span { color: #7fd4ff; }
+
+    #tooltip {
+      position: absolute;
+      background: #0d1320dd;
+      border: 1px solid #2a4060;
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: #c8d8f0;
+      font-size: 12px;
+      line-height: 1.8;
+      pointer-events: none;
+      display: none;
+      max-width: 220px;
+    }
+    #tooltip .tt-title { color: #7fd4ff; font-weight: bold; margin-bottom: 2px; }
+
+    #legend {
+      position: absolute;
+      bottom: 16px; left: 16px;
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .leg { display: flex; align-items: center; gap: 8px; color: #9ab; font-size: 12px; }
+    .leg-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+    #zoom-hint {
+      position: absolute;
+      bottom: 16px; right: 120px;
+      color: #445566;
+      font-size: 11px;
+      line-height: 1.8;
+      text-align: right;
+      pointer-events: none;
+    }
+
+    #controls {
+      position: absolute;
+      bottom: 16px; right: 16px;
+      display: flex; flex-direction: column; gap: 8px; align-items: stretch;
+      pointer-events: all;
+    }
+    #controls button {
+      background: #0d1320cc;
+      border: 1px solid #2a4060;
+      border-radius: 6px;
+      color: #7fd4ff;
+      font-family: inherit;
+      font-size: 12px;
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+    #controls button:hover { background: #1a3a60cc; }
+    #btn-trails { color: #556677; }
+    #btn-trails.active { color: #7fd4ff; border-color: #4080b0; background: #1a3a60cc; }
+
+    #status-bar {
+      position: absolute;
+      top: 16px; right: 16px;
+      display: flex; align-items: center; gap: 8px;
+      color: #9ab; font-size: 12px;
+    }
+    #conn-indicator {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #f44; box-shadow: 0 0 6px #f44;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    #conn-indicator.connected { background: #4f4; box-shadow: 0 0 8px #4f4; }
+
+    #dialog-overlay {
+      position: absolute; inset: 0;
+      background: #0a0a12cc;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    #dialog {
+      background: #0d1320;
+      border: 1px solid #2a4060;
+      border-radius: 12px;
+      padding: 32px 40px;
+      width: 380px;
+      color: #c8d8f0;
+    }
+    #dialog h2 { margin-bottom: 20px; font-size: 18px; color: #7fd4ff; }
+    #dialog label { display: block; margin-bottom: 4px; font-size: 12px; color: #9ab; }
+    #dialog input {
+      width: 100%; padding: 8px 10px;
+      background: #0a0a12; border: 1px solid #2a4060;
+      border-radius: 6px; color: #c8d8f0;
+      font-family: inherit; font-size: 14px;
+      margin-bottom: 14px;
+      outline: none;
+    }
+    #dialog input:focus { border-color: #7fd4ff; }
+    #dialog button {
+      width: 100%; padding: 10px;
+      background: #1a3a60; border: 1px solid #2a5080;
+      border-radius: 6px; color: #7fd4ff;
+      font-family: inherit; font-size: 14px;
+      cursor: pointer; transition: background 0.2s;
+    }
+    #dialog button:hover { background: #1e4878; }
+    #dialog-error { color: #f88; font-size: 12px; min-height: 18px; margin-top: -8px; margin-bottom: 10px; }
+
+    #endgame-banner {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      display: none;
+      align-items: center; justify-content: center; gap: 16px;
+      padding: 10px 20px;
+      background: #0d1320dd;
+      border-bottom: 1px solid #2a4060;
+      pointer-events: none;
+      animation: slideDown 0.4s ease;
+    }
+    #endgame-banner.visible { display: flex; pointer-events: all; }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-100%); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    #endgame-icon { font-size: 24px; animation: pulse 1.5s ease infinite; flex-shrink: 0; }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1);    opacity: 1; }
+      50%       { transform: scale(1.12); opacity: 0.8; }
+    }
+    #endgame-title  { font-size: 15px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; }
+    #endgame-subtitle { font-size: 13px; color: #7fd4ff; }
+    #endgame-btn {
+      margin-left: auto;
+      padding: 6px 18px;
+      background: #1a3a60; border: 1px solid #2a5080;
+      border-radius: 6px; color: #7fd4ff;
+      font-family: inherit; font-size: 12px;
+      cursor: pointer; transition: background 0.2s; flex-shrink: 0;
+    }
+    #endgame-btn:hover { background: #1e4878; }
+  </style>
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+
+<div id="hud">
+  <div id="info-panel">
+    <div>Univers&nbsp;: <span id="info-universe">—</span></div>
+    <div>Grille&nbsp;&nbsp;: <span id="info-size">—</span></div>
+    <div>Vaisseaux : <span id="info-vessels">0</span></div>
+    <div>Curseur&nbsp;: <span id="info-cursor">—</span></div>
+    <div>Zoom&nbsp;&nbsp;&nbsp;&nbsp;: <span id="info-zoom">100%</span></div>
+  </div>
+
+  <div id="status-bar">
+    <div id="conn-indicator"></div>
+    <span id="conn-label">Déconnecté</span>
+  </div>
+
+  <div id="tooltip"></div>
+
+  <div id="legend">
+    <div class="leg"><div class="leg-dot" style="background:#b04010;border-radius:3px"></div>Astéroïde</div>
+    <div class="leg"><div class="leg-dot" style="background:#ffe040"></div>Vaisseau</div>
+    <div class="leg"><div class="leg-dot" style="background:#ff4040"></div>Torpille</div>
+    <div class="leg"><div class="leg-dot" style="background:#c020c0"></div>Mine</div>
+    <div class="leg"><div class="leg-dot" style="background:#20d080"></div>Ressource</div>
+  </div>
+
+  <div id="zoom-hint">
+    <span id="hint-2d">Molette : zoom &nbsp;|&nbsp; Glisser : pan<br>Double-clic : réinitialiser</span>
+    <span id="hint-3d" style="display:none">Molette : zoom &nbsp;|&nbsp; Clic gauche : pan<br>Clic droit : orbite &nbsp;|&nbsp; Double-clic : réinitialiser</span>
+  </div>
+
+  <div id="controls">
+    <button id="btn-trails">⟿ Tracés</button>
+    <button id="btn-reset">⟳ Réinitialiser vue</button>
+  </div>
+</div>
+
+<div id="dialog-overlay">
+  <div id="dialog">
+    <h2>24hc26 — Observer</h2>
+    <label>Univers</label>
+    <input id="inp-universe" type="text" placeholder="(vide = lobby)" />
+    <label>Clé admin <span style="color:#556">(optionnel)</span></label>
+    <input id="inp-key" type="password" placeholder="admin key" />
+    <div id="dialog-error"></div>
+    <button id="btn-connect">Connecter</button>
+  </div>
+</div>
+
+<div id="endgame-banner">
+  <span id="endgame-icon">🏁</span>
+  <div id="endgame-title">Fin de partie</div>
+  <div id="endgame-subtitle">—</div>
+  <button id="endgame-btn">Nouvelle partie</button>
+</div>
+
+<script type="module">
+// ═══════════════════════════════════════════════════════════
+//  Utility
+// ═══════════════════════════════════════════════════════════
+function el(id) { return document.getElementById(id); }
+
+// ─── Minimal mat4 library ───────────────────────────────────
+// Column-major Float32Array, same convention as WebGL.
+const m4 = {
+  identity() {
+    return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+  },
+  multiply(a, b) {
+    const r = new Float32Array(16);
+    for (let i = 0; i < 4; i++)
+      for (let j = 0; j < 4; j++)
+        for (let k = 0; k < 4; k++)
+          r[j*4+i] += a[k*4+i] * b[j*4+k];
+    return r;
+  },
+  perspective(fovY, aspect, near, far) {
+    const f = 1.0 / Math.tan(fovY / 2);
+    const nf = 1 / (near - far);
+    return new Float32Array([
+      f/aspect, 0,  0,                   0,
+      0,        f,  0,                   0,
+      0,        0,  (far+near)*nf,       -1,
+      0,        0,  2*far*near*nf,       0,
+    ]);
+  },
+  lookAt(eye, center, up) {
+    let fx = center[0]-eye[0], fy = center[1]-eye[1], fz = center[2]-eye[2];
+    let fl = Math.hypot(fx,fy,fz); fx/=fl; fy/=fl; fz/=fl;
+    let sx = fy*up[2]-fz*up[1], sy = fz*up[0]-fx*up[2], sz = fx*up[1]-fy*up[0];
+    let sl = Math.hypot(sx,sy,sz); sx/=sl; sy/=sl; sz/=sl;
+    const ux = sy*fz-sz*fy, uy = sz*fx-sx*fz, uz = sx*fy-sy*fx;
+    return new Float32Array([
+       sx,  ux, -fx, 0,
+       sy,  uy, -fy, 0,
+       sz,  uz, -fz, 0,
+      -(sx*eye[0]+sy*eye[1]+sz*eye[2]),
+      -(ux*eye[0]+uy*eye[1]+uz*eye[2]),
+       (fx*eye[0]+fy*eye[1]+fz*eye[2]), 1,
+    ]);
+  },
+  translation(tx, ty, tz) {
+    const m = m4.identity();
+    m[12]=tx; m[13]=ty; m[14]=tz;
+    return m;
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+//  WebGL2 setup
+// ═══════════════════════════════════════════════════════════
+const canvas = el('gl');
+const gl = canvas.getContext('webgl2', { antialias: true, alpha: false });
+if (!gl) { alert('WebGL2 non supporté par ce navigateur.'); }
+
+// ── Compile helpers ──────────────────────────────────────────
+function compileShader(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+    throw new Error('Shader error:\n' + gl.getShaderInfoLog(s));
+  return s;
+}
+function buildProgram(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compileShader(gl.VERTEX_SHADER,   vs));
+  gl.attachShader(p, compileShader(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+    throw new Error('Program link error:\n' + gl.getProgramInfoLog(p));
+  return p;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Shared fragment shader for objects (2D + 3D)
+// ═══════════════════════════════════════════════════════════
+const FS_OBJECTS = `#version 300 es
+precision highp float;
+in float vKind;
+in float vAlpha;
+in vec2  vUV;
+out vec4 fragColor;
+
+float sdCircle(vec2 uv, float r) { return length(uv-0.5)-r; }
+float sdDiamond(vec2 uv, float r) { vec2 d=abs(uv-0.5); return d.x+d.y-r; }
+float sdRoundedBox(vec2 uv, float extent, float radius) {
+  vec2 d = abs(uv-0.5)-extent+radius;
+  return length(max(d,0.0))+min(max(d.x,d.y),0.0)-radius;
+}
+float fill(float d, float aa) { return 1.0-smoothstep(-aa,aa,d); }
+
+void main() {
+  float aa = 0.03;
+  int   k  = int(vKind+0.5);
+  vec3 col; float alpha;
+
+  if (k==0) {
+    float d = sdRoundedBox(vUV,0.38,0.12);
+    alpha = fill(d,aa);
+    col = vec3(0.69,0.25,0.06);
+    col -= abs(sin((vUV.x-vUV.y)*12.0))*0.15;
+  } else if (k==1) {
+    float body = fill(sdCircle(vUV,0.28),aa);
+    float ring = fill(sdCircle(vUV,0.38),aa)*(1.0-body)*0.45;
+    alpha = body+ring;
+    col = mix(vec3(1.0,0.82,0.18),vec3(1.0,0.95,0.55),1.0-length(vUV-0.5)*2.0);
+  } else if (k==2) {
+    vec2 uv2 = vec2(vUV.x,(vUV.y-0.5)*2.2+0.5);
+    alpha = fill(sdDiamond(uv2,0.28),aa*1.5);
+    col = vec3(1.0,0.22,0.18);
+  } else if (k==3) {
+    vec2 uv2=vUV-0.5;
+    float sq1=sdRoundedBox(vUV,0.22,0.04);
+    vec2  rot=vec2(uv2.x*0.707-uv2.y*0.707,uv2.x*0.707+uv2.y*0.707)+0.5;
+    alpha=fill(min(sq1,sdRoundedBox(rot,0.22,0.04)),aa);
+    col=vec3(0.78,0.12,0.82);
+  } else {
+    alpha=fill(sdCircle(vUV,0.32),aa);
+    col=vec3(0.10,0.82,0.48);
+  }
+  fragColor = vec4(col, alpha*vAlpha);
+}`;
+
+// ═══════════════════════════════════════════════════════════
+//  2D program  (pan/zoom, instanced quads)
+// ═══════════════════════════════════════════════════════════
+// kinds: 0=asteroid 1=vessel 2=torpedo 3=mine 4=resource
+const VS_2D = `#version 300 es
+precision highp float;
+const vec2 CORNERS[6] = vec2[6](
+  vec2(0,0),vec2(1,0),vec2(0,1),vec2(1,0),vec2(1,1),vec2(0,1));
+layout(location=0) in vec2  aGridPos;
+layout(location=1) in float aKind;
+layout(location=2) in float aAlpha;
+uniform vec2  uGridSize;
+uniform vec2  uViewport;
+uniform float uCell;
+uniform vec2  uPan;
+uniform float uZoom;
+out float vKind; out float vAlpha; out vec2 vUV;
+void main(){
+  vec2 corner=CORNERS[gl_VertexID];
+  vUV=corner; vKind=aKind; vAlpha=aAlpha;
+  vec2 orig=(uViewport-uGridSize*uCell)*0.5;
+  vec2 worldPx=orig+(aGridPos+corner)*uCell;
+  vec2 centre=uViewport*0.5;
+  vec2 screenPx=(worldPx-centre-uPan)*uZoom+centre;
+  vec2 ndc=(screenPx/uViewport)*2.0-1.0; ndc.y=-ndc.y;
+  gl_Position=vec4(ndc,0,1);
+}`;
+
+const prog2D     = buildProgram(VS_2D, FS_OBJECTS);
+const u2DGridSz  = gl.getUniformLocation(prog2D, 'uGridSize');
+const u2DVP      = gl.getUniformLocation(prog2D, 'uViewport');
+const u2DCell    = gl.getUniformLocation(prog2D, 'uCell');
+const u2DPan     = gl.getUniformLocation(prog2D, 'uPan');
+const u2DZoom    = gl.getUniformLocation(prog2D, 'uZoom');
+
+// ═══════════════════════════════════════════════════════════
+//  3D mesh programs
+//
+//  Vertex layout (mesh VBO): [x,y,z, nx,ny,nz]  — 6 floats / vertex
+//  Instance VBO (location 3): [cx, cy, cz]       — 3 floats / instance
+//  (grid cell centre, before world-space transform)
+// ═══════════════════════════════════════════════════════════
+
+const VS_3D_MESH = `#version 300 es
+precision highp float;
+
+layout(location=0) in vec3 aPos;      // mesh vertex position (model space)
+layout(location=1) in vec3 aNormal;   // mesh vertex normal   (model space)
+layout(location=3) in vec3 aInstPos;  // instance: grid cell xyz
+
+uniform mat4  uVP;          // projection * view  (no model matrix)
+uniform vec3  uGridSize3;
+uniform float uCell3;
+uniform float uScale;       // object radius in world units
+// optional per-type rotation angle (torpedoes align to Z axis)
+uniform float uRotZ;
+
+out vec3 vNormal;
+out vec3 vWorldPos;
+
+void main(){
+  // Rotate around Z
+  float c=cos(uRotZ), s=sin(uRotZ);
+  vec3 rPos=vec3(aPos.x*c-aPos.y*s, aPos.x*s+aPos.y*c, aPos.z);
+  vec3 rNrm=vec3(aNormal.x*c-aNormal.y*s, aNormal.x*s+aNormal.y*c, aNormal.z);
+
+  // Instance centre in world space
+  vec3 centre=(aInstPos+0.5)*uCell3 - uGridSize3*uCell3*0.5;
+  vec3 worldPos = centre + rPos * uScale;
+
+  vNormal   = rNrm;
+  vWorldPos = worldPos;
+  gl_Position = uVP * vec4(worldPos, 1.0);
+}`;
+
+const FS_3D_MESH = `#version 300 es
+precision highp float;
+
+in vec3 vNormal;
+in vec3 vWorldPos;
+
+uniform vec3  uColor;
+uniform vec3  uEyePos;
+
+out vec4 fragColor;
+
+void main(){
+  vec3 N = normalize(vNormal);
+  // Two lights for nice shading
+  vec3 L1 = normalize(vec3(1.0, 0.8, 1.5));
+  vec3 L2 = normalize(vec3(-0.6, -0.4, 0.6));
+  vec3 V  = normalize(uEyePos - vWorldPos);
+
+  float diff1 = max(dot(N, L1), 0.0);
+  float diff2 = max(dot(N, L2), 0.0) * 0.35;
+  float amb   = 0.12;
+
+  // Specular (Blinn-Phong)
+  vec3  H    = normalize(L1 + V);
+  float spec = pow(max(dot(N, H), 0.0), 48.0) * 0.6;
+
+  // Rim light
+  float rim = pow(1.0 - max(dot(N, V), 0.0), 3.0) * 0.25;
+
+  vec3 col = uColor * (amb + diff1 + diff2) + vec3(spec) + uColor * rim;
+  fragColor = vec4(col, 1.0);
+}`;
+
+const prog3DMesh   = buildProgram(VS_3D_MESH, FS_3D_MESH);
+const u3DVP        = gl.getUniformLocation(prog3DMesh, 'uVP');
+const u3DGridSz    = gl.getUniformLocation(prog3DMesh, 'uGridSize3');
+const u3DCell      = gl.getUniformLocation(prog3DMesh, 'uCell3');
+const u3DScale     = gl.getUniformLocation(prog3DMesh, 'uScale');
+const u3DRotZ      = gl.getUniformLocation(prog3DMesh, 'uRotZ');
+const u3DColor     = gl.getUniformLocation(prog3DMesh, 'uColor');
+const u3DEyePos    = gl.getUniformLocation(prog3DMesh, 'uEyePos');
+
+// ── 2D instance buffer ────────────────────────────────────────
+const FLOATS_2D = 4;
+const instBuf = gl.createBuffer();
+
+// 2D VAO (unchanged)
+const vao2D = gl.createVertexArray();
+gl.bindVertexArray(vao2D);
+gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, FLOATS_2D*4, 0);
+gl.vertexAttribDivisor(0, 1);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 1, gl.FLOAT, false, FLOATS_2D*4, 8);
+gl.vertexAttribDivisor(1, 1);
+gl.enableVertexAttribArray(2);
+gl.vertexAttribPointer(2, 1, gl.FLOAT, false, FLOATS_2D*4, 12);
+gl.vertexAttribDivisor(2, 1);
+gl.bindVertexArray(null);
+
+// ── 3D per-kind instance buffers (xyz only, 3 floats each) ───
+const FLOATS_3D = 3;
+
+// instBufs3D[kind] holds flat [x,y,z, x,y,z, ...] for that kind
+const instBufs3D  = Array.from({length:5}, () => gl.createBuffer());
+const instCounts3D = new Int32Array(5);
+
+// ── Procedural mesh generation ───────────────────────────────
+// Returns { verts: Float32Array([x,y,z,nx,ny,nz,...]),
+//           idx:   Uint16Array }
+
+function makeSphere(stacks, slices, radiusFn) {
+  // radiusFn(theta, phi) → radius perturbation (or 1.0 for smooth sphere)
+  const verts = [], idx = [];
+  for (let i=0; i<=stacks; i++) {
+    const phi = Math.PI * i / stacks - Math.PI/2;
+    for (let j=0; j<=slices; j++) {
+      const theta = 2*Math.PI * j / slices;
+      const r = radiusFn ? radiusFn(theta, phi) : 1.0;
+      const x = r*Math.cos(phi)*Math.cos(theta);
+      const y = r*Math.cos(phi)*Math.sin(theta);
+      const z = r*Math.sin(phi);
+      const nl = Math.hypot(x,y,z);
+      verts.push(x,y,z, x/nl,y/nl,z/nl);
+    }
+  }
+  for (let i=0; i<stacks; i++) {
+    for (let j=0; j<slices; j++) {
+      const a = i*(slices+1)+j, b = a+slices+1;
+      idx.push(a,b,a+1, a+1,b,b+1);
+    }
+  }
+  return { verts: new Float32Array(verts), idx: new Uint16Array(idx) };
+}
+
+function makeCone(steps, height, baseR, tipY) {
+  // Vessel: cone pointing in +Z, with 3 swept fins
+  const verts = [], idx = [];
+  const tip = [0, 0, tipY];
+  // Cone body
+  for (let i=0; i<=steps; i++) {
+    const t  = i/steps, a = 2*Math.PI*t;
+    const cx = Math.cos(a)*baseR, cy = Math.sin(a)*baseR;
+    // base ring vertex
+    verts.push(cx, cy, -height/2,  Math.cos(a), Math.sin(a), 0);
+    // normal for side: slightly outward and up
+    verts.push(cx, cy, -height/2,  Math.cos(a)*0.85, Math.sin(a)*0.85, 0.53);
+  }
+  // Tip
+  const tipIdx = verts.length/6;
+  verts.push(0,0,height/2, 0,0,1);
+  // Body triangles
+  for (let i=0; i<steps; i++) {
+    const b = i*2, n = (i+1)*steps*0+((i+1)%steps)*2;
+    // base quad (2 verts per step: base normal + side normal)
+    idx.push(i*2+1, ((i+1)%steps)*2+1, tipIdx);
+  }
+  // Base cap
+  const baseCapIdx = verts.length/6;
+  verts.push(0,0,-height/2, 0,0,-1);
+  for (let i=0; i<steps; i++) {
+    idx.push(baseCapIdx, (i*2+2)%(steps*2), i*2);
+  }
+  return { verts: new Float32Array(verts), idx: new Uint16Array(idx) };
+}
+
+function makeCapsule(stacks, slices, halfLen, r) {
+  // Torpedo: capsule = cylinder + two hemisphere caps
+  const verts=[], idx=[];
+  const hemi = Math.floor(stacks/2);
+  // Top hemisphere
+  for (let i=0; i<=hemi; i++) {
+    const phi = Math.PI/2 * i/hemi;
+    for (let j=0; j<=slices; j++) {
+      const theta = 2*Math.PI*j/slices;
+      const x=r*Math.cos(phi)*Math.cos(theta);
+      const y=r*Math.cos(phi)*Math.sin(theta);
+      const z=halfLen+r*Math.sin(phi);
+      verts.push(x,y,z, x/r,y/r,(z-halfLen)/r);
+    }
+  }
+  // Cylinder (2 rings)
+  for (let i=0; i<=1; i++) {
+    const z = halfLen - 2*halfLen*i;
+    for (let j=0; j<=slices; j++) {
+      const theta=2*Math.PI*j/slices;
+      const x=r*Math.cos(theta), y=r*Math.sin(theta);
+      verts.push(x,y,z, Math.cos(theta),Math.sin(theta),0);
+    }
+  }
+  // Bottom hemisphere
+  for (let i=hemi; i>=0; i--) {
+    const phi = Math.PI/2 * i/hemi;
+    for (let j=0; j<=slices; j++) {
+      const theta=2*Math.PI*j/slices;
+      const x=r*Math.cos(phi)*Math.cos(theta);
+      const y=r*Math.cos(phi)*Math.sin(theta);
+      const z=-halfLen-r*Math.sin(phi);
+      verts.push(x,y,z, x/r,y/r,-(z+halfLen)/r);
+    }
+  }
+  const rows = hemi+1 + 2 + hemi+1;
+  for (let i=0; i<rows-1; i++) {
+    for (let j=0; j<slices; j++) {
+      const a=i*(slices+1)+j, b=a+(slices+1);
+      idx.push(a,b,a+1, a+1,b,b+1);
+    }
+  }
+  return { verts: new Float32Array(verts), idx: new Uint16Array(idx) };
+}
+
+function makeSpherWithSpikes(sphereStacks, sphereSlices, nSpikes, spikeLen) {
+  // Mine: smooth sphere + pointed spikes along ±X ±Y ±Z axes
+  const base = makeSphere(sphereStacks, sphereSlices, () => 0.45);
+  const verts = Array.from(base.verts);
+  const idx   = Array.from(base.idx);
+  const dirs  = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+  for (const [dx,dy,dz] of dirs) {
+    const baseI = verts.length/6;
+    // Spike base ring (4 verts)
+    const r = 0.08;
+    const t1 = [dy, dz, dx], t2 = [dz, dx, dy]; // perpendicular
+    for (let i=0; i<4; i++) {
+      const a = Math.PI/2*i;
+      const x=dx*0.42 + t1[0]*r*Math.cos(a) + t2[0]*r*Math.sin(a);
+      const y=dy*0.42 + t1[1]*r*Math.cos(a) + t2[1]*r*Math.sin(a);
+      const z=dz*0.42 + t1[2]*r*Math.cos(a) + t2[2]*r*Math.sin(a);
+      verts.push(x,y,z, dx,dy,dz);
+    }
+    // Spike tip
+    const tipI = verts.length/6;
+    verts.push(dx*(0.42+spikeLen), dy*(0.42+spikeLen), dz*(0.42+spikeLen), dx,dy,dz);
+    // Triangles
+    for (let i=0; i<4; i++) {
+      idx.push(baseI+i, baseI+(i+1)%4, tipI);
+    }
+  }
+  return { verts: new Float32Array(verts), idx: new Uint16Array(idx) };
+}
+
+function makeOctahedron() {
+  // Resource: regular octahedron
+  const s = 0.5;
+  const verts = new Float32Array([
+    // top
+     0, 0, s,  0, 0, 1,
+    // bottom
+     0, 0,-s,  0, 0,-1,
+    // equator
+     s, 0, 0,  1, 0, 0,
+    -s, 0, 0, -1, 0, 0,
+     0, s, 0,  0, 1, 0,
+     0,-s, 0,  0,-1, 0,
+  ]);
+  // Flat-shaded faces (each face has computed normal)
+  const faces = [
+    [0,2,4],[0,4,3],[0,3,5],[0,5,2],
+    [1,4,2],[1,3,4],[1,5,3],[1,2,5],
+  ];
+  const fv = [], fi = [];
+  for (const [a,b,c] of faces) {
+    const getV = i => [verts[i*6],verts[i*6+1],verts[i*6+2]];
+    const va=getV(a), vb=getV(b), vc=getV(c);
+    const ex=[vb[0]-va[0],vb[1]-va[1],vb[2]-va[2]];
+    const ey=[vc[0]-va[0],vc[1]-va[1],vc[2]-va[2]];
+    const nx=ey[1]*ex[2]-ey[2]*ex[1];
+    const ny=ey[2]*ex[0]-ey[0]*ex[2];
+    const nz=ey[0]*ex[1]-ey[1]*ex[0];
+    const nl=Math.hypot(nx,ny,nz);
+    const base=fv.length/6;
+    for (const v of [va,vb,vc]) fv.push(...v, nx/nl,ny/nl,nz/nl);
+    fi.push(base, base+1, base+2);
+  }
+  return { verts: new Float32Array(fv), idx: new Uint16Array(fi) };
+}
+
+// ── Build and upload meshes ───────────────────────────────────
+// Each entry: { vbo, ebo, count, vao3D, color[3], scale, rotZ }
+const hash3 = v => { let h=2166136261; for(const c of v){h=(h^c.charCodeAt?c.charCodeAt(0):c)*16777619|0} return h>>>0; };
+
+function buildMeshVAO(mesh, instBuf3D) {
+  const vbo = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.bufferData(gl.ARRAY_BUFFER, mesh.verts, gl.STATIC_DRAW);
+
+  const ebo = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.idx, gl.STATIC_DRAW);
+
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  // aPos (loc 0)
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0);
+  // aNormal (loc 1)
+  gl.enableVertexAttribArray(1);
+  gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);
+
+  // aInstPos (loc 3) — per-instance
+  gl.bindBuffer(gl.ARRAY_BUFFER, instBuf3D);
+  gl.enableVertexAttribArray(3);
+  gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 12, 0);
+  gl.vertexAttribDivisor(3, 1);
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
+  gl.bindVertexArray(null);
+  return { vao, count: mesh.idx.length };
+}
+
+// Build meshes
+// Compute the bounding radius of a mesh (max distance from origin of any vertex)
+function meshBoundingRadius(mesh) {
+  let r = 0;
+  for (let i = 0; i < mesh.verts.length; i += 6)
+    r = Math.max(r, Math.hypot(mesh.verts[i], mesh.verts[i+1], mesh.verts[i+2]));
+  return r;
+}
+
+// Visual fill factor: fraction of the cell radius each object should occupy.
+// Asteroid is intentionally larger (obstacle), others are comparable.
+const FILL = { asteroid: 0.22, vessel: 0.44, torpedo: 0.38, mine: 0.42, resource: 0.38 };
+
+const meshData = [
+  // 0 asteroid
+  (() => { const m=makeSphere(10,14,(t,p)=>{ let r=1; const h=Math.sin(t*3.1+p*2.3); r+=h*0.18; return r; }); return { m, color:[0.69,0.25,0.06], fill:FILL.asteroid, rotZ:0 }; })(),
+  // 1 vessel — cone (wider base for better visibility)
+  (() => { const m=makeCone(12,0.9,0.55,0.45); return { m, color:[1.0,0.82,0.18], fill:FILL.vessel, rotZ:0 }; })(),
+  // 2 torpedo — capsule
+  (() => { const m=makeCapsule(6,10,0.38,0.14); return { m, color:[1.0,0.22,0.18], fill:FILL.torpedo, rotZ:0 }; })(),
+  // 3 mine — sphere with spikes
+  (() => { const m=makeSpherWithSpikes(8,12,6,0.32); return { m, color:[0.78,0.12,0.82], fill:FILL.mine, rotZ:0 }; })(),
+  // 4 resource — octahedron
+  (() => { const m=makeOctahedron(); return { m, color:[0.10,0.82,0.48], fill:FILL.resource, rotZ:0 }; })(),
+];
+
+const meshObjs = meshData.map(({m, color, fill, rotZ}, i) => {
+  // Normalise: scale so that bounding radius == fill (in cell units)
+  const br = meshBoundingRadius(m);
+  const scale = fill / br;   // uScale will be multiplied by cell in the render loop
+  return { ...buildMeshVAO(m, instBufs3D[i]), color, scale, rotZ };
+});
+
+// ═══════════════════════════════════════════════════════════
+//  Background (full-screen nebula + stars)
+// ═══════════════════════════════════════════════════════════
+const BG_VS = `#version 300 es
+precision highp float;
+const vec2 P[3]=vec2[3](vec2(-1,-1),vec2(3,-1),vec2(-1,3));
+out vec2 vUV;
+void main(){ vUV=P[gl_VertexID]*0.5+0.5; gl_Position=vec4(P[gl_VertexID],0,1); }`;
+
+const BG_FS = `#version 300 es
+precision highp float;
+uniform vec2  uRes;
+uniform float uTime;
+in vec2 vUV;
+out vec4 fragColor;
+
+float hash(vec2 p){ p=fract(p*vec2(127.1,311.7)); p+=dot(p,p+19.19); return fract(p.x*p.y); }
+float vnoise(vec2 p){ vec2 i=floor(p),f=fract(p); vec2 u=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y); }
+float fbm(vec2 p){ float v=0.0,a=0.5;
+  for(int i=0;i<6;i++){ v+=a*vnoise(p); p=p*2.03+vec2(1.7,9.2); a*=0.5; } return v; }
+float starLayer(vec2 uv,float s,float thr){
+  vec2 cell=floor(uv*s),offs=fract(uv*s)-0.5;
+  float rng=hash(cell); if(rng<thr) return 0.0;
+  vec2 jit=vec2(hash(cell+7.3),hash(cell+13.7))-0.5;
+  float d=length(offs-jit*0.6),size=mix(0.004,0.018,hash(cell+31.1));
+  float bright=smoothstep(size,size*0.1,d);
+  float twinkle=0.75+0.25*sin(uTime*(2.0+4.0*hash(cell+99.0))+6.28*hash(cell+55.0));
+  return bright*twinkle*mix(0.5,1.0,hash(cell+77.0)); }
+
+void main(){
+  vec2 uv=vUV, uvA=vec2(uv.x*uRes.x/uRes.y,uv.y);
+  vec3 col=vec3(0.014,0.016,0.032);
+  vec2 drift=vec2(uTime*0.004,uTime*0.0025);
+  float f1=fbm(uvA*2.1+drift),f2=fbm(uvA*1.7+drift*1.3+vec2(5.2,1.3)),f3=fbm(uvA*3.4-drift*0.7+vec2(2.8,7.1));
+  col+=vec3(0.08,0.04,0.20)*pow(f1,2.2)*2.8;
+  col+=vec3(0.02,0.12,0.18)*pow(f2,2.5)*2.2;
+  col+=vec3(0.22,0.06,0.04)*pow(max(f3-0.38,0.0),1.8)*3.5;
+  col+=vec3(0.01,0.01,0.03)*fbm(uvA*0.6+drift*0.4)*2.5;
+  float s;
+  s=starLayer(uv,180.0,0.82); col+=vec3(0.55,0.65,0.80)*s*0.55;
+  s=starLayer(uv,80.0,0.88);  col+=vec3(0.80,0.88,1.00)*s*0.85;
+  s=starLayer(uv,30.0,0.94);  col+=vec3(1.00,0.97,0.88)*s*1.2;
+  s=starLayer(uv,12.0,0.975);
+  vec3 tint=mix(vec3(0.7,0.85,1.0),vec3(1.0,0.9,0.6),hash(floor(uv*12.0)+200.0));
+  col+=tint*s*1.8;
+  col*=clamp(1.0-0.55*dot(uv-0.5,uv-0.5)*4.0,0.0,1.0);
+  col=col/(col+0.18); col=pow(col,vec3(0.9));
+  fragColor=vec4(col,1.0);
+}`;
+const bgProg  = buildProgram(BG_VS, BG_FS);
+const bgVao   = gl.createVertexArray();
+const bgURes  = gl.getUniformLocation(bgProg, 'uRes');
+const bgUTime = gl.getUniformLocation(bgProg, 'uTime');
+
+// ═══════════════════════════════════════════════════════════
+//  Border programs
+// ═══════════════════════════════════════════════════════════
+
+// ── 2D border: line-strip rect, tiling-aware ─────────────────
+const BORDER2D_VS = `#version 300 es
+precision highp float;
+const vec2 CORNERS[5]=vec2[5](vec2(0,0),vec2(1,0),vec2(1,1),vec2(0,1),vec2(0,0));
+uniform vec2  uGridSize; uniform vec2 uViewport; uniform float uCell;
+uniform vec2  uPan;      uniform float uZoom;    uniform vec2  uTileOffset;
+void main(){
+  vec2 orig=(uViewport-uGridSize*uCell)*0.5;
+  vec2 worldPx=orig+(uTileOffset+CORNERS[gl_VertexID]*uGridSize)*uCell;
+  vec2 centre=uViewport*0.5;
+  vec2 screenPx=(worldPx-centre-uPan)*uZoom+centre;
+  vec2 ndc=(screenPx/uViewport)*2.0-1.0; ndc.y=-ndc.y;
+  gl_Position=vec4(ndc,0,1);
+}`;
+const BORDER_FS = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+void main(){ fragColor=vec4(0.3,0.5,0.7,0.6); }`;
+const border2DProg   = buildProgram(BORDER2D_VS, BORDER_FS);
+const brd2DGridSz    = gl.getUniformLocation(border2DProg, 'uGridSize');
+const brd2DVP        = gl.getUniformLocation(border2DProg, 'uViewport');
+const brd2DCell      = gl.getUniformLocation(border2DProg, 'uCell');
+const brd2DPan       = gl.getUniformLocation(border2DProg, 'uPan');
+const brd2DZoom      = gl.getUniformLocation(border2DProg, 'uZoom');
+const brd2DTileOff   = gl.getUniformLocation(border2DProg, 'uTileOffset');
+const border2DVao    = gl.createVertexArray();
+
+// ── 3D border: wireframe box (12 edges = 24 vertices) ────────
+// Edges of a unit cube [0,1]^3
+const CUBE_EDGES = new Float32Array([
+  // bottom face
+  0,0,0, 1,0,0,   1,0,0, 1,1,0,   1,1,0, 0,1,0,   0,1,0, 0,0,0,
+  // top face
+  0,0,1, 1,0,1,   1,0,1, 1,1,1,   1,1,1, 0,1,1,   0,1,1, 0,0,1,
+  // verticals
+  0,0,0, 0,0,1,   1,0,0, 1,0,1,   1,1,0, 1,1,1,   0,1,0, 0,1,1,
+]);
+const cubeEdgeBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, cubeEdgeBuf);
+gl.bufferData(gl.ARRAY_BUFFER, CUBE_EDGES, gl.STATIC_DRAW);
+
+const BORDER3D_VS = `#version 300 es
+precision highp float;
+layout(location=0) in vec3 aPos;        // unit cube corner [0,1]^3
+uniform mat4  uMVP;
+uniform vec3  uGridSize3;
+uniform float uCell3;
+uniform vec3  uTileOffset3;             // tile offset in grid cells
+void main(){
+  vec3 world=(uTileOffset3+aPos*uGridSize3)*uCell3 - uGridSize3*uCell3*0.5;
+  gl_Position=uMVP*vec4(world,1.0);
+}`;
+const border3DProg   = buildProgram(BORDER3D_VS, BORDER_FS);
+const brd3DMVP       = gl.getUniformLocation(border3DProg, 'uMVP');
+const brd3DGridSz    = gl.getUniformLocation(border3DProg, 'uGridSize3');
+const brd3DCell      = gl.getUniformLocation(border3DProg, 'uCell3');
+const brd3DTileOff   = gl.getUniformLocation(border3DProg, 'uTileOffset3');
+const border3DVao    = gl.createVertexArray();
+gl.bindVertexArray(border3DVao);
+gl.bindBuffer(gl.ARRAY_BUFFER, cubeEdgeBuf);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0);
+gl.bindVertexArray(null);
+
+// ═══════════════════════════════════════════════════════════
+//  Trail programs  (2D + 3D share same fragment shader)
+// ═══════════════════════════════════════════════════════════
+const TRAIL_FS = `#version 300 es
+precision highp float;
+in float vAge;
+uniform vec3 uColor;
+out vec4 fragColor;
+void main(){
+  float alpha = pow(vAge, 1.5) * 0.75;
+  fragColor = vec4(uColor, alpha);
+}`;
+
+// ── 3D trail vertex shader ───────────────────────────────────
+const TRAIL3D_VS = `#version 300 es
+precision highp float;
+layout(location=0) in vec3 aPos;
+layout(location=1) in float aAge;
+uniform mat4 uVP;
+uniform vec3 uGridSize3;
+uniform float uCell3;
+out float vAge;
+void main(){
+  vAge = aAge;
+  vec3 world = (aPos + 0.5) * uCell3 - uGridSize3 * uCell3 * 0.5;
+  gl_Position = uVP * vec4(world, 1.0);
+}`;
+
+const trail3DProg    = buildProgram(TRAIL3D_VS, TRAIL_FS);
+const trail3DUVP     = gl.getUniformLocation(trail3DProg, 'uVP');
+const trail3DUGridSz = gl.getUniformLocation(trail3DProg, 'uGridSize3');
+const trail3DUCell   = gl.getUniformLocation(trail3DProg, 'uCell3');
+const trail3DUColor  = gl.getUniformLocation(trail3DProg, 'uColor');
+
+// ── 2D trail vertex shader ───────────────────────────────────
+const TRAIL2D_VS = `#version 300 es
+precision highp float;
+layout(location=0) in vec2 aPos;    // grid cell position xy
+layout(location=1) in float aAge;
+uniform vec2  uGridSize;
+uniform vec2  uViewport;
+uniform float uCell;
+uniform vec2  uPan;
+uniform float uZoom;
+out float vAge;
+void main(){
+  vAge = aAge;
+  // centre of cell in world-pixel space (same as object shader, +0.5 offset)
+  vec2 orig = (uViewport - uGridSize * uCell) * 0.5;
+  vec2 worldPx = orig + (aPos + 0.5) * uCell;
+  vec2 centre = uViewport * 0.5;
+  vec2 screenPx = (worldPx - centre - uPan) * uZoom + centre;
+  vec2 ndc = (screenPx / uViewport) * 2.0 - 1.0; ndc.y = -ndc.y;
+  gl_Position = vec4(ndc, 0.0, 1.0);
+}`;
+
+const trail2DProg    = buildProgram(TRAIL2D_VS, TRAIL_FS);
+const trail2DUGridSz = gl.getUniformLocation(trail2DProg, 'uGridSize');
+const trail2DUVP     = gl.getUniformLocation(trail2DProg, 'uViewport');
+const trail2DUCell   = gl.getUniformLocation(trail2DProg, 'uCell');
+const trail2DUPan    = gl.getUniformLocation(trail2DProg, 'uPan');
+const trail2DUZoom   = gl.getUniformLocation(trail2DProg, 'uZoom');
+const trail2DUColor  = gl.getUniformLocation(trail2DProg, 'uColor');
+
+// ── Shared VAOs (pos 2D or 3D + age) ────────────────────────
+const trailPosBuf = gl.createBuffer();
+const trailAgeBuf = gl.createBuffer();
+
+const trail3DVao = gl.createVertexArray();
+gl.bindVertexArray(trail3DVao);
+gl.bindBuffer(gl.ARRAY_BUFFER, trailPosBuf);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0);
+gl.bindBuffer(gl.ARRAY_BUFFER, trailAgeBuf);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 4, 0);
+gl.bindVertexArray(null);
+
+const trail2DVao = gl.createVertexArray();
+gl.bindVertexArray(trail2DVao);
+gl.bindBuffer(gl.ARRAY_BUFFER, trailPosBuf);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);   // only xy
+gl.bindBuffer(gl.ARRAY_BUFFER, trailAgeBuf);
+gl.enableVertexAttribArray(1);
+gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 4, 0);
+gl.bindVertexArray(null);
+
+// Trail state — one entry per vessel name
+// trails[name] = { positions: [[x,y,z], …], color: [r,g,b] }
+const trails     = new Map();
+let   showTrails = true;
+const MAX_TRAIL  = 300;   // max points per vessel
+
+// Deterministic colour from vessel name
+function vesselColor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const hue = (h % 360) / 360;
+  // HSV → RGB  (full saturation, high value)
+  const i = Math.floor(hue * 6), f = hue * 6 - i;
+  const q = 1 - f, t = f;
+  const rgb = [
+    [1,t,0],[q,1,0],[0,1,t],[0,q,1],[t,0,1],[1,0,q]
+  ][i % 6];
+  return rgb.map(v => 0.5 + v * 0.5);  // desaturate slightly
+}
+
+function recordTrails(vessels) {
+  if (!vessels) return;
+  for (const [name, pos] of vessels) {
+    if (!trails.has(name)) trails.set(name, { positions: [], color: vesselColor(name) });
+    const t = trails.get(name);
+    const last = t.positions.at(-1);
+    // only record if position changed
+    if (!last || last[0] !== pos[0] || last[1] !== pos[1] || (last[2]??0) !== (pos[2]??0))
+      t.positions.push([pos[0], pos[1], pos[2] ?? 0]);
+    if (t.positions.length > MAX_TRAIL) t.positions.shift();
+  }
+  // remove vessels no longer present
+  const active = new Set(vessels.map(([n]) => n));
+  for (const name of trails.keys()) if (!active.has(name)) trails.delete(name);
+}
+
+// ── Upload trail geometry (shared) ───────────────────────────
+function uploadTrail(pts, stride) {
+  const n = pts.length;
+  const posData = new Float32Array(n * stride);
+  const ageData = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < stride; j++) posData[i*stride+j] = pts[i][j] ?? 0;
+    ageData[i] = i / (n - 1);
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, trailPosBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, posData, gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, trailAgeBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, ageData, gl.DYNAMIC_DRAW);
+  return n;
+}
+
+function drawTrails3D(mvp, gridSz, cell) {
+  if (!showTrails || trails.size === 0) return;
+  gl.useProgram(trail3DProg);
+  gl.bindVertexArray(trail3DVao);
+  gl.uniformMatrix4fv(trail3DUVP, false, mvp);
+  gl.uniform3f(trail3DUGridSz, gridSz[0], gridSz[1], gridSz[2]);
+  gl.uniform1f(trail3DUCell, cell);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  for (const [, trail] of trails) {
+    if (trail.positions.length < 2) continue;
+    const n = uploadTrail(trail.positions, 3);
+    gl.uniform3fv(trail3DUColor, trail.color);
+    gl.drawArrays(gl.LINE_STRIP, 0, n);
+  }
+  gl.disable(gl.BLEND);
+  gl.bindVertexArray(null);
+}
+
+function drawTrails2D(gridSz, cell, W, H) {
+  if (!showTrails || trails.size === 0) return;
+  gl.useProgram(trail2DProg);
+  gl.bindVertexArray(trail2DVao);
+  gl.uniform2f(trail2DUGridSz, gridSz[0], gridSz[1]);
+  gl.uniform2f(trail2DUVP, W, H);
+  gl.uniform1f(trail2DUCell, cell);
+  gl.uniform2f(trail2DUPan, cam2D.panX, cam2D.panY);
+  gl.uniform1f(trail2DUZoom, cam2D.zoom);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  for (const [, trail] of trails) {
+    if (trail.positions.length < 2) continue;
+    const n = uploadTrail(trail.positions, 2);
+    gl.uniform3fv(trail2DUColor, trail.color);
+    gl.drawArrays(gl.LINE_STRIP, 0, n);
+  }
+  gl.disable(gl.BLEND);
+  gl.bindVertexArray(null);
+}
+
+// Toggle button — initialise to match showTrails default
+el('btn-trails').classList.add('active');
+el('btn-trails').addEventListener('click', () => {
+  showTrails = !showTrails;
+  el('btn-trails').classList.toggle('active', showTrails);
+});
+
+// ═══════════════════════════════════════════════════════════
+//  Camera state
+// ═══════════════════════════════════════════════════════════
+// 2D: pan (world-px offset from centre) + zoom
+// 3D: orbital  theta (azimuth), phi (elevation), radius + panX3/panY3/panZ3
+const cam2D = { panX: 0, panY: 0, zoom: 1 };
+const cam3D = {
+  theta: Math.PI / 4,      // azimuth
+  phi:   Math.PI / 5,      // elevation above XY plane
+  radius: 120,             // world units
+  panX: 0, panY: 0, panZ: 0,  // target point offset
+};
+const ZOOM_MIN = 0.1, ZOOM_MAX = 40;
+
+function is3D() { return (objs?.size?.length ?? 2) >= 3; }
+
+// ── Build MVP for 3D camera ──────────────────────────────────
+// cell is always 1 world-unit per grid cell — fixed, independent of zoom.
+// cam3D.radius is the orbital distance in world units.
+const CELL_3D = 2.5;
+
+function buildMVP(W, H) {
+  const gridSz = objs.size;
+  const cell   = CELL_3D;
+  // World-space centre of the grid is (0,0,0) — the shader centres the grid at origin.
+  // Eye orbits around (0,0,0).
+  const eye = [
+    cam3D.radius * Math.cos(cam3D.phi) * Math.cos(cam3D.theta),
+    cam3D.radius * Math.cos(cam3D.phi) * Math.sin(cam3D.theta),
+    cam3D.radius * Math.sin(cam3D.phi),
+  ];
+  // Look-at target: origin shifted by pan
+  const target = [cam3D.panX, cam3D.panY, cam3D.panZ];
+  const view = m4.lookAt(eye, target, [0, 0, 1]);
+  // far covers the entire toric neighbourhood (±1 tile) regardless of zoom
+  const far  = Math.max(...gridSz) * CELL_3D * 6;
+  // near is fixed to half a cell — never depends on radius
+  const near = CELL_3D * 0.2;
+  const proj = m4.perspective(Math.PI / 3, W / H, near, far);
+  return { mvp: m4.multiply(proj, view), cell, eye, view };
+}
+
+// Alias used by pan handler to access the view matrix
+function buildMVPFull(W, H) { return buildMVP(W, H); }
+
+function normalisePan2D() {
+  const gridSz = objs?.size ?? [50, 50];
+  const W = canvas.width, H = canvas.height;
+  const cellPx = Math.min(W / (gridSz[0]+1), H / (gridSz[1]+1));
+  const worldW = gridSz[0] * cellPx, worldH = gridSz[1] * cellPx;
+  cam2D.panX = ((cam2D.panX % worldW) + worldW*1.5) % worldW - worldW*0.5;
+  cam2D.panY = ((cam2D.panY % worldH) + worldH*1.5) % worldH - worldH*0.5;
+}
+
+function resetCamera() {
+  cam2D.panX = 0; cam2D.panY = 0; cam2D.zoom = 1;
+  cam3D.theta = Math.PI/4; cam3D.phi = Math.PI/5;
+  cam3D.panX = 0; cam3D.panY = 0; cam3D.panZ = 0;
+  const gridSz = objs?.size ?? [50, 50, 50];
+  cam3D.radius = Math.max(...gridSz) * CELL_3D * 2.0;
+  el('info-zoom').textContent = '100%';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Input handling  (mode-dependent)
+// ═══════════════════════════════════════════════════════════
+let drag = null;
+// drag.mode: 'pan2d' | 'orbit3d' | 'pan3d'
+
+canvas.addEventListener('mousedown', e => {
+  if (is3D()) {
+    const mode = e.button === 2 ? 'orbit3d' : 'pan3d';
+    drag = { mode,
+      startX: e.clientX, startY: e.clientY,
+      theta0: cam3D.theta, phi0: cam3D.phi,
+      panX0: cam3D.panX, panY0: cam3D.panY, panZ0: cam3D.panZ,
+    };
+    canvas.classList.add('orbiting');
+  } else {
+    if (e.button !== 0) return;
+    drag = { mode: 'pan2d',
+      startX: e.clientX, startY: e.clientY,
+      panX0: cam2D.panX, panY0: cam2D.panY,
+    };
+    canvas.classList.add('dragging');
+  }
+});
+
+window.addEventListener('mousemove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.startX;
+  const dy = e.clientY - drag.startY;
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+  if (drag.mode === 'pan2d') {
+    cam2D.panX = drag.panX0 - dx * dpr / cam2D.zoom;
+    cam2D.panY = drag.panY0 - dy * dpr / cam2D.zoom;
+    normalisePan2D();
+  } else if (drag.mode === 'orbit3d') {
+    cam3D.theta = drag.theta0 - dx * 0.007;
+    cam3D.phi   = Math.max(-Math.PI/2 + 0.05,
+                  Math.min( Math.PI/2 - 0.05,
+                  drag.phi0 + dy * 0.007));
+  } else if (drag.mode === 'pan3d') {
+    // 1 pixel = tan(FOV/2) * radius * 2 / viewport_height  world units
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const H   = canvas.height;
+    const speed = Math.tan(Math.PI / 6) * cam3D.radius * 2 / H * dpr;
+
+    // Extract camera right and up from view matrix (rows 0 and 1 of the rotation part)
+    // view matrix is column-major: view[col*4 + row]
+    // row 0 = right vector, row 1 = up vector
+    const W = canvas.width;
+    const { mvp: _, cell: __, eye: ___ , view } = buildMVPFull(W, H);
+    // right = (view[0], view[4], view[8])   — first row of view rotation
+    // up    = (view[1], view[5], view[9])   — second row
+    const right = [view[0], view[4], view[8]];
+    const up    = [view[1], view[5], view[9]];
+
+    cam3D.panX = drag.panX0 + (-dx * right[0] - dy * up[0]) * speed;
+    cam3D.panY = drag.panY0 + (-dx * right[1] - dy * up[1]) * speed;
+    cam3D.panZ = drag.panZ0 + (-dx * right[2] - dy * up[2]) * speed;
+  }
+});
+
+window.addEventListener('mouseup', () => {
+  drag = null;
+  canvas.classList.remove('dragging', 'orbiting');
+});
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1/1.15 : 1.15;
+  if (is3D()) {
+    const gridSz = objs?.size ?? [50, 50, 50];
+    const rMin = CELL_3D * 1.2;   // slightly above near (CELL_3D*0.2) + object radius
+    const rMax = Math.max(...gridSz) * CELL_3D * 8;
+    cam3D.radius = Math.max(rMin, Math.min(rMax, cam3D.radius * factor));
+    el('info-zoom').textContent = Math.round(cam3D.radius) + ' u';
+  } else {
+    const dpr  = Math.max(1, window.devicePixelRatio || 1);
+    const rect = canvas.getBoundingClientRect();
+    const cx   = (e.clientX - rect.left) * dpr;
+    const cy   = (e.clientY - rect.top)  * dpr;
+    const W = canvas.width, H = canvas.height;
+    const worldX = (cx - W*0.5) / cam2D.zoom + cam2D.panX;
+    const worldY = (cy - H*0.5) / cam2D.zoom + cam2D.panY;
+    cam2D.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, cam2D.zoom / factor));
+    cam2D.panX = worldX - (cx - W*0.5) / cam2D.zoom;
+    cam2D.panY = worldY - (cy - H*0.5) / cam2D.zoom;
+    normalisePan2D();
+    el('info-zoom').textContent = Math.round(cam2D.zoom * 100) + '%';
+  }
+}, { passive: false });
+
+canvas.addEventListener('dblclick', resetCamera);
+el('btn-reset').addEventListener('click', resetCamera);
+
+// Touch (2D only for now — 3D orbit via single finger, pinch = zoom)
+let touches = {}, pinchDist0 = null, pinchZoom0 = null;
+function tdist(a, b) { return Math.hypot(a.x-b.x, a.y-b.y); }
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches)
+    touches[t.identifier] = { x: t.clientX, y: t.clientY };
+  const ids = Object.keys(touches);
+  if (ids.length === 2) {
+    pinchDist0 = tdist(touches[ids[0]], touches[ids[1]]);
+    pinchZoom0 = is3D() ? cam3D.radius : cam2D.zoom;
+    drag = null;
+  } else if (ids.length === 1) {
+    const id = ids[0];
+    drag = is3D()
+      ? { mode:'orbit3d', startX:touches[id].x, startY:touches[id].y,
+          theta0:cam3D.theta, phi0:cam3D.phi,
+          panX0:cam3D.panX, panY0:cam3D.panY, panZ0:cam3D.panZ }
+      : { mode:'pan2d', startX:touches[id].x, startY:touches[id].y,
+          panX0:cam2D.panX, panY0:cam2D.panY };
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches)
+    touches[t.identifier] = { x: t.clientX, y: t.clientY };
+  const ids = Object.keys(touches);
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  if (ids.length === 2) {
+    const d = tdist(touches[ids[0]], touches[ids[1]]);
+    if (is3D()) cam3D.radius = Math.max(5, pinchZoom0 * pinchDist0 / d);
+    else        cam2D.zoom   = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, pinchZoom0 * d / pinchDist0));
+    el('info-zoom').textContent = Math.round((is3D() ? 100/cam3D.radius : cam2D.zoom*100)) + '%';
+  } else if (ids.length === 1 && drag) {
+    const id = ids[0];
+    const dx = touches[id].x - drag.startX, dy = touches[id].y - drag.startY;
+    if (drag.mode === 'orbit3d') {
+      cam3D.theta = drag.theta0 - dx * 0.007;
+      cam3D.phi   = Math.max(-Math.PI/2+0.05, Math.min(Math.PI/2-0.05, drag.phi0 + dy * 0.007));
+    } else {
+      cam2D.panX = drag.panX0 - dx * dpr / cam2D.zoom;
+      cam2D.panY = drag.panY0 - dy * dpr / cam2D.zoom;
+      normalisePan2D();
+    }
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  for (const t of e.changedTouches) delete touches[t.identifier];
+  pinchDist0 = null; drag = null;
+});
+
+// ═══════════════════════════════════════════════════════════
+//  Game state
+// ═══════════════════════════════════════════════════════════
+let objs      = {};
+let instData  = new Float32Array(0);
+let instCount = 0;
+let animT     = 0;
+let lastRAF   = 0;
+
+const KIND = { asteroid:0, vessel:1, torpedo:2, mine:3, resource:4 };
+
+// ── Toric tile enumeration ───────────────────────────────────
+function visibleTiles2D(gridSz, cell, W, H) {
+  const hwx = W*0.5/cam2D.zoom, hwy = H*0.5/cam2D.zoom;
+  const tileW = gridSz[0]*cell, tileH = gridSz[1]*cell;
+  const minTX = Math.floor((cam2D.panX-hwx)/tileW);
+  const maxTX = Math.ceil ((cam2D.panX+hwx)/tileW);
+  const minTY = Math.floor((cam2D.panY-hwy)/tileH);
+  const maxTY = Math.ceil ((cam2D.panY+hwy)/tileH);
+  const tiles = [];
+  for (let ty=minTY; ty<=maxTY; ty++)
+    for (let tx=minTX; tx<=maxTX; tx++)
+      tiles.push([tx, ty]);
+  return tiles;
+}
+
+// For 3D: canonical tile + 6 adjacent faces for toric wrapping
+function visibleTiles3D() {
+  return [[0,0,0]];
+}
+
+// ── 3D instance buffers: one Float32Array per kind ───────────
+const inst3DData = Array.from({length:5}, () => []);
+
+function buildInstances3D() {
+  const gridSz = objs?.size ?? [50,50,50];
+  for (let k=0;k<5;k++) inst3DData[k] = [];
+  const tiles = visibleTiles3D();
+  for (const [tx,ty,tz] of tiles) {
+    const ox=tx*gridSz[0], oy=ty*gridSz[1], oz=tz*(gridSz[2]??0);
+    const push = (p, kind) => {
+      inst3DData[kind].push(p[0]+ox, p[1]+oy, (p[2]??0)+oz);
+    };
+    if (objs.asteroids) for (const p of objs.asteroids) push(p, KIND.asteroid);
+    if (objs.vessels)   for (const [,p] of objs.vessels) push(p, KIND.vessel);
+    if (objs.torpedos)  for (const [,p] of objs.torpedos) push(p, KIND.torpedo);
+    if (objs.mines)     for (const [,p] of objs.mines) push(p, KIND.mine);
+    if (objs.farmables) for (const p of objs.farmables) push(p, KIND.resource);
+  }
+  for (let k=0;k<5;k++) {
+    const data = new Float32Array(inst3DData[k]);
+    instCounts3D[k] = data.length / FLOATS_3D;
+    if (instCounts3D[k] > 0) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, instBufs3D[k]);
+      gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+    }
+  }
+}
+
+// ── 2D instance buffer ────────────────────────────────────────
+function buildInstances2D() {
+  const rows   = [];
+  const gridSz = objs?.size ?? [50, 50];
+  const W = canvas.width, H = canvas.height;
+  const cell = Math.min(W/(gridSz[0]+1), H/(gridSz[1]+1));
+  const tiles = visibleTiles2D(gridSz, cell, W, H);
+  for (const [tx,ty] of tiles) {
+    const ox = tx*gridSz[0], oy = ty*gridSz[1];
+    const push = (p, kind) => rows.push(p[0]+ox, p[1]+oy, kind, 1.0);
+    if (objs.asteroids) for (const p of objs.asteroids) push(p, KIND.asteroid);
+    if (objs.vessels)   for (const [,p] of objs.vessels) push(p, KIND.vessel);
+    if (objs.torpedos)  for (const [,p] of objs.torpedos) push(p, KIND.torpedo);
+    if (objs.mines)     for (const [,p] of objs.mines) push(p, KIND.mine);
+    if (objs.farmables) for (const p of objs.farmables) push(p, KIND.resource);
+  }
+  instData  = new Float32Array(rows);
+  instCount = rows.length / FLOATS_2D;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Resize
+// ═══════════════════════════════════════════════════════════
+function resize() {
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  canvas.width  = Math.floor(canvas.clientWidth  * dpr);
+  canvas.height = Math.floor(canvas.clientHeight * dpr);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ═══════════════════════════════════════════════════════════
+//  Render loop
+// ═══════════════════════════════════════════════════════════
+function render(ts) {
+  requestAnimationFrame(render);
+  const dt = (ts - lastRAF) / 1000; lastRAF = ts; animT += dt;
+
+  const W = canvas.width, H = canvas.height;
+  gl.viewport(0, 0, W, H);
+
+  // Background
+  gl.useProgram(bgProg);
+  gl.bindVertexArray(bgVao);
+  gl.uniform2f(bgURes, W, H);
+  gl.uniform1f(bgUTime, animT);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  const gridSz = objs?.size ?? [50, 50];
+
+  if (is3D()) {
+    gl.enable(gl.DEPTH_TEST);
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+
+    const { mvp, cell, eye } = buildMVP(W, H);
+
+    // Wireframe cube borders
+    gl.useProgram(border3DProg);
+    gl.bindVertexArray(border3DVao);
+    gl.uniformMatrix4fv(brd3DMVP, false, mvp);
+    gl.uniform3f(brd3DGridSz, gridSz[0], gridSz[1], gridSz[2]);
+    gl.uniform1f(brd3DCell, cell);
+    for (const [tx,ty,tz] of visibleTiles3D()) {
+      gl.uniform3f(brd3DTileOff, tx*gridSz[0], ty*gridSz[1], tz*gridSz[2]);
+      gl.drawArrays(gl.LINES, 0, 24);
+    }
+
+    // 3D mesh instances (one draw call per kind)
+    buildInstances3D();
+    gl.useProgram(prog3DMesh);
+    gl.uniformMatrix4fv(u3DVP,     false, mvp);
+    gl.uniform3f(u3DGridSz, gridSz[0], gridSz[1], gridSz[2]);
+    gl.uniform1f(u3DCell,   cell);
+    gl.uniform3fv(u3DEyePos, eye);
+
+    for (let k=0; k<5; k++) {
+      if (instCounts3D[k] === 0) continue;
+      const mo = meshObjs[k];
+      gl.bindVertexArray(mo.vao);
+      gl.uniform3fv(u3DColor, mo.color);
+      gl.uniform1f(u3DScale,  mo.scale * cell);
+      gl.uniform1f(u3DRotZ,   mo.rotZ);
+      gl.drawElementsInstanced(gl.TRIANGLES, mo.count, gl.UNSIGNED_SHORT, 0, instCounts3D[k]);
+    }
+    drawTrails3D(mvp, gridSz, cell);
+    gl.disable(gl.DEPTH_TEST);
+
+  } else {
+    const cell  = Math.min(W/(gridSz[0]+1), H/(gridSz[1]+1));
+    const tiles = visibleTiles2D(gridSz, cell, W, H);
+
+    // 2D borders
+    gl.useProgram(border2DProg);
+    gl.bindVertexArray(border2DVao);
+    gl.uniform2f(brd2DGridSz, gridSz[0], gridSz[1]);
+    gl.uniform2f(brd2DVP, W, H);
+    gl.uniform1f(brd2DCell, cell);
+    gl.uniform2f(brd2DPan, cam2D.panX, cam2D.panY);
+    gl.uniform1f(brd2DZoom, cam2D.zoom);
+    for (const [tx,ty] of tiles) {
+      gl.uniform2f(brd2DTileOff, tx*gridSz[0], ty*gridSz[1]);
+      gl.drawArrays(gl.LINE_STRIP, 0, 5);
+    }
+
+    // 2D instances
+    buildInstances2D();
+    if (instCount > 0) {
+      gl.useProgram(prog2D);
+      gl.bindVertexArray(vao2D);
+      gl.uniform2f(u2DGridSz, gridSz[0], gridSz[1]);
+      gl.uniform2f(u2DVP, W, H);
+      gl.uniform1f(u2DCell, cell);
+      gl.uniform2f(u2DPan, cam2D.panX, cam2D.panY);
+      gl.uniform1f(u2DZoom, cam2D.zoom);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, instData, gl.DYNAMIC_DRAW);
+
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, instCount);
+      gl.disable(gl.BLEND);
+    }
+    drawTrails2D(gridSz, cell, W, H);
+  }
+}
+requestAnimationFrame(render);
+
+// ═══════════════════════════════════════════════════════════
+//  Mouse hover → tooltip
+// ═══════════════════════════════════════════════════════════
+const tooltip    = el('tooltip');
+const infoCursor = el('info-cursor');
+
+function screenToGrid(clientX, clientY) {
+  const dpr    = Math.max(1, window.devicePixelRatio || 1);
+  const rect   = canvas.getBoundingClientRect();
+  const gridSz = objs?.size ?? [50, 50];
+  const W = canvas.width, H = canvas.height;
+
+  if (is3D()) {
+    // Ray casting: find the integer cell closest to the ray
+    const { mvp, cell } = buildMVP(W, H);
+
+    // Invert MVP to get ray in world space
+    // NDC of mouse
+    const nx = ((clientX - rect.left)*dpr / W)*2 - 1;
+    const ny = -(((clientY - rect.top)*dpr / H)*2 - 1);
+
+    // We do a simple approach: unproject two points (near/far) and find
+    // the grid cell closest to the ray that contains an object.
+    // For the tooltip we just show the nearest object to the ray centre
+    // projected to grid coords — good enough for spectating.
+    // Fall back: project each object's world pos to screen, pick nearest to cursor.
+    const cx_s = (clientX - rect.left)*dpr;
+    const cy_s = (clientY - rect.top)*dpr;
+    let best = null, bestDist = Infinity;
+
+    const projectToScreen = (gx, gy, gz) => {
+      const wx = (gx+0.5)*cell - gridSz[0]*cell*0.5 + cam3D.panX;
+      const wy = (gy+0.5)*cell - gridSz[1]*cell*0.5 + cam3D.panY;
+      const wz = (gz+0.5)*cell - gridSz[2]*cell*0.5 + cam3D.panZ;
+      // multiply by mvp manually
+      const m = mvp;
+      const cx_ = m[0]*wx+m[4]*wy+m[8]*wz+m[12];
+      const cy_ = m[1]*wx+m[5]*wy+m[9]*wz+m[13];
+      const cw  = m[3]*wx+m[7]*wy+m[11]*wz+m[15];
+      if (cw <= 0) return null;
+      return [(cx_/cw*0.5+0.5)*W, (-cy_/cw*0.5+0.5)*H];
+    };
+
+    const check = (p, kind, name='') => {
+      const gz = p[2] ?? 0;
+      const s = projectToScreen(p[0], p[1], gz);
+      if (!s) return;
+      const d = Math.hypot(s[0]-cx_s, s[1]-cy_s);
+      if (d < bestDist && d < 30*dpr) {
+        bestDist = d;
+        best = { gx: p[0], gy: p[1], gz, kind, name };
+      }
+    };
+    if (objs.asteroids) for (const p of objs.asteroids) check(p, 'asteroid');
+    if (objs.vessels)   for (const [n,p] of objs.vessels) check(p, 'vessel', n);
+    if (objs.torpedos)  for (const [n,p] of objs.torpedos) check(p, 'torpedo', n);
+    if (objs.mines)     for (const [n,p] of objs.mines) check(p, 'mine', n);
+    if (objs.farmables) for (const p of objs.farmables) check(p, 'resource');
+
+    return best ? { hit3d: best, gridSz } : { hit3d: null, gridSz };
+
+  } else {
+    const cell   = Math.min(W/(gridSz[0]+1), H/(gridSz[1]+1));
+    const sx = (clientX - rect.left)*dpr;
+    const sy = (clientY - rect.top)*dpr;
+    const worldPx_x = (sx - W*0.5)/cam2D.zoom + cam2D.panX + W*0.5;
+    const worldPx_y = (sy - H*0.5)/cam2D.zoom + cam2D.panY + H*0.5;
+    const origX = (W - gridSz[0]*cell)/2;
+    const origY = (H - gridSz[1]*cell)/2;
+    const rawGx = Math.floor((worldPx_x-origX)/cell);
+    const rawGy = Math.floor((worldPx_y-origY)/cell);
+    const gx = ((rawGx%gridSz[0])+gridSz[0])%gridSz[0];
+    const gy = ((rawGy%gridSz[1])+gridSz[1])%gridSz[1];
+    return { gx, gy, gridSz };
+  }
+}
+
+canvas.addEventListener('mousemove', e => {
+  if (drag) { tooltip.style.display = 'none'; return; }
+
+  const result = screenToGrid(e.clientX, e.clientY);
+  const lines  = [];
+
+  if (is3D()) {
+    const { hit3d } = result;
+    if (!hit3d) { infoCursor.textContent = '—'; tooltip.style.display = 'none'; return; }
+    const { gx, gy, gz, kind, name } = hit3d;
+    infoCursor.textContent = `(${gx}, ${gy}, ${gz})`;
+    const label = { asteroid:'Astéroïde', vessel:'Vaisseau',
+                    torpedo:'Torpille', mine:'Mine', resource:'Ressource' };
+    lines.push(`<span class="tt-title">${label[kind]??kind}</span>${name?' '+name:''}`);
+  } else {
+    const { gx, gy } = result;
+    infoCursor.textContent = `(${gx}, ${gy})`;
+    if (objs.asteroids?.some(p=>p[0]===gx&&p[1]===gy))
+      lines.push('<span class="tt-title">Astéroïde</span>');
+    (objs.vessels  ??[]).filter(([,p])=>p[0]===gx&&p[1]===gy)
+      .forEach(([n])=>lines.push(`<span class="tt-title">Vaisseau</span> ${n}`));
+    (objs.torpedos ??[]).filter(([,p])=>p[0]===gx&&p[1]===gy)
+      .forEach(([n])=>lines.push(`<span class="tt-title">Torpille</span> ${n||'?'}`));
+    (objs.mines    ??[]).filter(([,p])=>p[0]===gx&&p[1]===gy)
+      .forEach(([n])=>lines.push(`<span class="tt-title">Mine</span> ${n||'?'}`));
+    (objs.farmables??[]).filter(p=>p[0]===gx&&p[1]===gy)
+      .forEach(()=>lines.push(`<span class="tt-title">Ressource</span>`));
+  }
+
+  if (lines.length) {
+    tooltip.innerHTML = lines.join('<br>');
+    tooltip.style.display = 'block';
+    tooltip.style.left = Math.min(e.clientX+14, window.innerWidth-240)  + 'px';
+    tooltip.style.top  = Math.min(e.clientY+14, window.innerHeight-120) + 'px';
+  } else {
+    tooltip.style.display = 'none';
+  }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  infoCursor.textContent = '—';
+  tooltip.style.display  = 'none';
+});
+
+// ═══════════════════════════════════════════════════════════
+//  End-of-game banner
+// ═══════════════════════════════════════════════════════════
+function showEndGame(reason) {
+  const isEnd = reason && reason.toLowerCase().includes('end of universe');
+  el('endgame-icon').textContent     = isEnd ? '🏁' : '⚠️';
+  el('endgame-title').textContent    = isEnd ? 'Fin de partie' : 'Déconnecté';
+  el('endgame-title').style.color    = isEnd ? '#c8d8f0' : '#ff8844';
+  el('endgame-subtitle').textContent = isEnd ? 'La partie est terminée.' : (reason||'Connexion perdue');
+  el('endgame-banner').classList.add('visible');
+}
+
+el('endgame-btn').addEventListener('click', () => {
+  el('endgame-banner').classList.remove('visible');
+  el('dialog-overlay').style.display = 'flex';
+  el('inp-universe').focus();
+});
+
+// ═══════════════════════════════════════════════════════════
+//  WebSocket
+// ═══════════════════════════════════════════════════════════
+const connIndicator = el('conn-indicator');
+const connLabel     = el('conn-label');
+
+function setConnected(v) {
+  connIndicator.className   = v ? 'connected' : '';
+  connLabel.textContent     = v ? 'Connecté' : 'Déconnecté';
+  el('hud').style.background = v ? '' : '#ff000011';
+}
+setConnected(false);
+
+let ws = null;
+
+function updateModeUI() {
+  const three = is3D();
+  canvas.classList.toggle('mode3d', three);
+  el('hint-2d').style.display    = three ? 'none' : '';
+  el('hint-3d').style.display    = three ? '' : 'none';
+  el('btn-trails').style.display = '';   // visible in both 2D and 3D
+}
+
+function connect(universe, key) {
+  if (ws) { ws.onclose = null; ws.close(); }
+  resetCamera();
+  trails.clear();
+
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+  ws.onopen = () => setConnected(true);
+
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'hello') {
+      const rq = { type: 'rq_world_report', universe, dt: 0.1 };
+      if (key) rq.key = key;
+      ws.send(JSON.stringify(rq));
+    } else if (msg.type === 'world_report') {
+      objs = msg;
+      el('info-universe').textContent = universe || '(lobby)';
+      el('info-size').textContent     = (msg.size ?? []).join(' × ');
+      el('info-vessels').textContent  = (msg.vessels ?? []).length;
+      updateModeUI();
+      recordTrails(msg.vessels);
+    } else {
+      console.warn('Unknown message:', msg);
+    }
+  };
+
+  ws.onclose = e => { setConnected(false); ws = null; showEndGame(e.reason || ''); };
+  ws.onerror = () => setConnected(false);
+}
+
+// ─── Dialog ─────────────────────────────────────────────────
+const btnConn = el('btn-connect');
+btnConn.addEventListener('click', () => {
+  const universe = el('inp-universe').value.trim();
+  const key      = el('inp-key').value.trim();
+  el('dialog-error').textContent = '';
+  el('dialog-overlay').style.display = 'none';
+  connect(universe, key);
+});
+el('inp-key').addEventListener('keydown',      e => { if (e.key==='Enter') btnConn.click(); });
+el('inp-universe').addEventListener('keydown', e => { if (e.key==='Enter') btnConn.click(); });
+el('inp-universe').focus();
+</script>
+</body>
+</html>
