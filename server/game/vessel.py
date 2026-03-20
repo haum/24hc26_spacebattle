@@ -307,7 +307,10 @@ class Vessel:
 
         for i, o in resources:
             qantity, cont = await o.harvest(_dt)
+            old_energy = self.energy
             self.energy = min(self.energy + qantity, ENERGY.max)
+            if old_energy < ENERGY.max and self.energy == ENERGY.max:
+                await self.send({'type': 'resource_fullcharge'})
             if not cont:
                 await self.send({'type': 'resource_depleted'})
 
