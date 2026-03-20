@@ -28,7 +28,7 @@ class ENERGY:
     laser = 50
     move = 5
     radar = 1
-    regen = 10
+    regen = 4
     max = 100
 
 def playing_only(f):
