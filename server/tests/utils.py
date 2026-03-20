@@ -39,3 +39,7 @@ class RadarLogger(MessageLogger):
 
     async def onPassiveScan(self, data):
         await self.log(data)
+
+
+def float_eq(a, b):
+    return abs(a-b) < 1e-6
