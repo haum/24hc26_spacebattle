@@ -30,12 +30,10 @@ app_key_c = web.AppKey("console", asyncio.Task)
 hostname = socket.gethostname()
 
 async def index(rq):
-    if hostname == "24hc26" and date(2026,3,21) <= date.today() <= date(2026,3,22):
-        return web.FileResponse('./index.html')
-    elif hostname != "24hc26":
-        return web.FileResponse('./index.html')
+    if hostname != '24hc26' or datetime.now() > datetime(year=2026, month=3, day=21, hour=10, minute=0):
+        raise web.HTTPMovedPermanently('/doc/')
     else:
-        return web.Response(text='')
+        return web.Response(text='Il est trop tôt pour voir le sujet…')
 
 
 def redirect301(url):
@@ -185,6 +183,7 @@ async def start_server():
     ])
 
     for d in ['doc', 'viewer']:
+        print(d, os.path.isdir(d))
         if os.path.isdir(d):
             app.router.add_route('GET', f'/{d}', redirect301(d+'/'))
             app.router.add_route('GET', f'/{d}/', static_file(d+'/index.html'))
