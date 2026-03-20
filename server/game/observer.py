@@ -45,8 +45,8 @@ class Observer:
                         )
                         for m in self.u.iter('mine')
                     ],
-                    'farmables': [
-                        f.position for f in self.u.iter("farmable")
+                    'resources': [
+                        f.position for f in self.u.iter("resource")
                     ],
                 })
                 await asyncio.sleep(self.delay)

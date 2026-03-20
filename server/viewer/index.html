@@ -1312,7 +1312,7 @@ function buildInstances3D() {
     if (objs.vessels)   for (const [,p] of objs.vessels) push(p, KIND.vessel);
     if (objs.torpedos)  for (const [,p] of objs.torpedos) push(p, KIND.torpedo);
     if (objs.mines)     for (const [,p] of objs.mines) push(p, KIND.mine);
-    if (objs.farmables) for (const p of objs.farmables) push(p, KIND.resource);
+    if (objs.resources) for (const p of objs.resources) push(p, KIND.resource);
   }
   for (let k=0;k<5;k++) {
     const data = new Float32Array(inst3DData[k]);
@@ -1338,7 +1338,7 @@ function buildInstances2D() {
     if (objs.vessels)   for (const [,p] of objs.vessels) push(p, KIND.vessel);
     if (objs.torpedos)  for (const [,p] of objs.torpedos) push(p, KIND.torpedo);
     if (objs.mines)     for (const [,p] of objs.mines) push(p, KIND.mine);
-    if (objs.farmables) for (const p of objs.farmables) push(p, KIND.resource);
+    if (objs.resources) for (const p of objs.resources) push(p, KIND.resource);
   }
   instData  = new Float32Array(rows);
   instCount = rows.length / FLOATS_2D;
@@ -1509,7 +1509,7 @@ function screenToGrid(clientX, clientY) {
     if (objs.vessels)   for (const [n,p] of objs.vessels) check(p, 'vessel', n);
     if (objs.torpedos)  for (const [n,p] of objs.torpedos) check(p, 'torpedo', n);
     if (objs.mines)     for (const [n,p] of objs.mines) check(p, 'mine', n);
-    if (objs.farmables) for (const p of objs.farmables) check(p, 'resource');
+    if (objs.resources) for (const p of objs.resources) check(p, 'resource');
 
     return best ? { hit3d: best, gridSz } : { hit3d: null, gridSz };
 
@@ -1554,7 +1554,7 @@ canvas.addEventListener('mousemove', e => {
       .forEach(([n])=>lines.push(`<span class="tt-title">Torpille</span> ${n||'?'}`));
     (objs.mines    ??[]).filter(([,p])=>p[0]===gx&&p[1]===gy)
       .forEach(([n])=>lines.push(`<span class="tt-title">Mine</span> ${n||'?'}`));
-    (objs.farmables??[]).filter(p=>p[0]===gx&&p[1]===gy)
+    (objs.resources??[]).filter(p=>p[0]===gx&&p[1]===gy)
       .forEach(()=>lines.push(`<span class="tt-title">Ressource</span>`));
   }
 
