@@ -57,7 +57,7 @@ def iem_sensitive(f):
     async def wrapper(vessel, data):
         if vessel.iemed_until > vessel.u.t:
             await vessel.damage(1)
-            await vessel.send({'type': 'iem_freeze'})
+            await vessel.send({'type': 'iem_frozen'})
         else:
             return await f(vessel, data)
     return wrapper

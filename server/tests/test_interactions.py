@@ -530,7 +530,7 @@ async def test_iem_attack():
     assert v2.iemed_until > u.t
 
     await route_message(v2, l2.log, {'type': 'move', 'direction': [1, 0]})
-    assert l2[-1] == { 'type': 'iem_freeze'}
+    assert l2[-1] == { 'type': 'iem_frozen'}
 
 
 @pytest.mark.asyncio
@@ -554,8 +554,8 @@ async def test_iem_attack_two_vessels():
     assert v3.iemed_until > u.t
     await route_message(v2, l2.log, {'type': 'move', 'direction': [1, 0]})
     await route_message(v3, l3.log, {'type': 'move', 'direction': [1, 0]})
-    assert l2[-1] == { 'type': 'iem_freeze'}
-    assert l3[-1] == { 'type': 'iem_freeze'}
+    assert l2[-1] == { 'type': 'iem_frozen'}
+    assert l3[-1] == { 'type': 'iem_frozen'}
 
 @pytest.mark.asyncio
 async def test_active_scan():
