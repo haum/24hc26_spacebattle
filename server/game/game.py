@@ -9,6 +9,7 @@ import json
 
 from .universe import Universe
 from .asteroid import Asteroid
+from .resource import Resource
 from .vessel import Vessel
 from .observer import Observer
 
@@ -109,6 +110,9 @@ class Game:
             for _ in range(min(int(math.prod(u.size)/100), 5000)):
                 p = random_position(u)
                 Asteroid(u, p)
+            for _ in range(min(int(math.prod(u.size)/1000), 100)):
+                p = random_position(u)
+                Resource(u, p, 500)
             for v in u.iter('vessel'):
                 await v.start()
             t0 = time.time()
