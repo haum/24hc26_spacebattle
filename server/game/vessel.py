@@ -27,7 +27,7 @@ class ENERGY:
     iem = 30
     laser = 50
     move = 5
-    radar = 1
+    radar = 5
     regen = 4
     max = 100
 
