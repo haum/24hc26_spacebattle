@@ -23,11 +23,14 @@ async def test_move():
     await runner.run_for(1)
     await route_message(v, l.log, {'type': 'move', 'direction': [-20, 0]})
     await runner.run_for(1)
+
+    assert v.position == [40-20, 10]
+    assert l[-1] == {'type': 'passive_scan', 'what': 'move', 'vessel': 'T:1', 'movement': [-20, 0]}
+
     await route_message(v, l.log, {'type': 'move', 'direction': [-200, 0]})
     await runner.run_for(1)
 
     assert v.position == [40-20, 10]
-    assert l[-2] == {'type': 'passive_scan', 'what': 'move', 'vessel': 'T:1', 'movement': [-20, 0]}
     assert l[-1] == {'type': 'move_aborded'}
 
 
