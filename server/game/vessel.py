@@ -35,6 +35,7 @@ def playing_only(f):
     @functools.wraps(f)
     async def wrapper(vessel, data):
         if vessel.frozen:
+            await vessel.damage(1)
             return 'Battle not started'
         return await f(vessel, data)
     return wrapper
@@ -55,6 +56,7 @@ def iem_sensitive(f):
     @functools.wraps(f)
     async def wrapper(vessel, data):
         if vessel.iemed_until > vessel.u.t:
+            await vessel.damage(1)
             await vessel.send({'type': 'iem_freeze'})
         else:
             return await f(vessel, data)
@@ -107,6 +109,7 @@ class Vessel:
 
     async def spend_energy(self, n):
         if self.energy < n:
+            await self.damage(1)
             await self.send({'type': 'low_energy'})
             return False
         self.energy = max(0, self.energy-n)
@@ -147,6 +150,7 @@ class Vessel:
             if dlen <= dmax:
                 self.move = d
             else:
+                await self.damage(1)
                 return {'type': 'move_aborded'}
 
     @playing_only
