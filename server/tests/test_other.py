@@ -75,7 +75,7 @@ async def test_battle_not_started():
     await route_message(v, l.log, {'type': 'fire_torpedo', 'direction': [0, 1]})
     assert l[-1] == 'Battle not started'
 
-    await route_message(v, l.log, {'type': 'drop_mine'})
+    await route_message(v, l.log, {'type': 'drop_mine', 'delay': 1})
     assert l[-1] == 'Battle not started'
 
     await route_message(v, l.log, {'type': 'fire_laser', 'direction': [0, 1]})
