@@ -122,6 +122,7 @@ class Vessel:
         })
 
     async def register_iem(self, t_end):
+        await self.send({'type': 'iem_damage'})
         self.iemed_until = t_end
 
     async def onMsg_connect(self, data):

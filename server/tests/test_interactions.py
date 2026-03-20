@@ -528,8 +528,10 @@ async def test_iem_attack():
     await runner.run_for(1)
 
     assert v2.iemed_until > u.t
+    assert l2[-1] == { 'type': 'iem_damage'}
 
     await route_message(v2, l2.log, {'type': 'move', 'direction': [1, 0]})
+
     assert l2[-1] == { 'type': 'iem_frozen'}
 
 
@@ -552,8 +554,12 @@ async def test_iem_attack_two_vessels():
 
     assert v2.iemed_until > u.t
     assert v3.iemed_until > u.t
+    assert l2[-1] == { 'type': 'iem_damage'}
+    assert l3[-1] == { 'type': 'iem_damage'}
+
     await route_message(v2, l2.log, {'type': 'move', 'direction': [1, 0]})
     await route_message(v3, l3.log, {'type': 'move', 'direction': [1, 0]})
+
     assert l2[-1] == { 'type': 'iem_frozen'}
     assert l3[-1] == { 'type': 'iem_frozen'}
 
