@@ -22,7 +22,7 @@ from .misc import (
     MSG_PING,
 )
 
-MAX_RESOURCES = 30
+MAX_RESOURCES = 25
 
 validators = dict(map(
     lambda kv: (
