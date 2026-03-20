@@ -3,9 +3,9 @@ import pytest
 from main import set_sender, route_message
 from game.resource import Resource
 from game.universe import Universe
-from game.vessel import Vessel, HP_LUT
+from game.vessel import Vessel, HP_LUT, ENERGY
 
-from .utils import UniverseRunner, MessageLogger
+from .utils import UniverseRunner, MessageLogger, float_eq
 
 
 @pytest.mark.asyncio
@@ -21,7 +21,7 @@ async def test_harvest_regular():
 
     assert r1.quantity == 20
     assert r2.quantity == 40
-    assert v.energy == 20+10 # harvested 20 + 10 regen
+    assert float_eq(v.energy, 20+ENERGY.regen) # harvested 20 + regen
 
 
 @pytest.mark.asyncio
@@ -38,7 +38,7 @@ async def test_harvest_finish():
     await runner.run_for(1)
 
     assert r.quantity == 0
-    assert v.energy == 20+10 # harvested 20 + 10 regen
+    assert float_eq(v.energy, 20+ENERGY.regen) # harvested 20 + regen
     assert logger.messages[-1] == {'type': 'resource_depleted'}
     assert r not in u.objects
 
@@ -57,7 +57,7 @@ async def test_harvest_partial():
     await runner.run_for(1)
 
     assert r.quantity == 0
-    assert v.energy == 9+10 # harvested 9 + 10 regen
+    assert float_eq(v.energy, 9+ENERGY.regen) # harvested 9 + regen
     assert logger.messages[-1] == {'type': 'resource_depleted'}
     assert r not in u.objects
 
