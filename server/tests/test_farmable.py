@@ -63,7 +63,7 @@ async def test_harvest_partial():
 
 
 @pytest.mark.asyncio
-async def test_destroy_to_farmable():
+async def test_destroy_to_resource():
     u = Universe('test', [50, 50])
     v = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
 
@@ -72,8 +72,8 @@ async def test_destroy_to_farmable():
 
     await v.destroy()
 
-    assert u.len('farmable') == 1
-    r = next(u.iter('farmable'))
+    assert u.len('resource') == 1
+    r = next(u.iter('resource'))
     assert r.quantity == HP_LUT[1]
     assert r.position == v.position
     assert r.rate == 5

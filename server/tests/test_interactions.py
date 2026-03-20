@@ -446,7 +446,7 @@ async def test_laser_attacking_vessel_behind_asteroid():
 
 
 @pytest.mark.asyncio
-async def test_laser_attacking_vessel_behind_farmable():
+async def test_laser_attacking_vessel_behind_resource():
     u = Universe('test', [50, 50])
     runner = UniverseRunner(u)
     v1 = Vessel(u, ['T', 1, 'test'], [1, 1, 1, 1], [0, 10])
@@ -460,7 +460,7 @@ async def test_laser_attacking_vessel_behind_farmable():
     await route_message(v2, None, {'type': 'fire_laser', 'direction': [0, -1]})
     await runner.run_for(1)
 
-    assert u.len('farmable') == 1
+    assert u.len('resource') == 1
     assert u.len('vessel') == 2
 
     assert v1.hp == hp1

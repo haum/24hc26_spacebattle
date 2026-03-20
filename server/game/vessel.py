@@ -188,7 +188,7 @@ class Vessel:
             (positions.index(o.position), o)
             for o in itertools.chain(
                 self.u.iter('collidable', self),
-                self.u.iter('farmable', self)
+                self.u.iter('resource', self)
             )
             if o.position in positions
         ), key=lambda x:x[0])
@@ -230,7 +230,7 @@ class Vessel:
     @iem_sensitive
     @use_energy(ENERGY.radar)
     async def onMsg_scan_radar(self, data):
-        for t in ('asteroid', 'mine', 'vessel', 'torpedo', 'farmable'):
+        for t in ('asteroid', 'mine', 'vessel', 'torpedo', 'resource'):
             for o in self.u.iter(t, self):
                 p = vector.mod_relative(
                     vector.sub(o.position, self.position),
@@ -300,12 +300,12 @@ class Vessel:
 
         self.energy = min(self.energy+_dt*ENERGY.regen, ENERGY.max)
 
-        farmables = (
+        resources = (
             (positions.index(o.position), o)
-            for o in self.u.iter('farmable', self)
+            for o in self.u.iter('resource', self)
             if o.position in positions)
 
-        for i, o in farmables:
+        for i, o in resources:
             qantity, cont = await o.harvest(_dt)
             self.energy = min(self.energy + qantity, ENERGY.max)
             if not cont:
