@@ -7,6 +7,7 @@ from .torpedo import Torpedo
 from .mine import Mine
 from .radar import emit_explosion, emit_move
 from .resource import Resource
+from .observer import emit_observer_msg
 from messages.game import MAX_STAT
 from enum import IntEnum
 
@@ -101,6 +102,7 @@ class Vessel:
     async def destroy(self):
         await self.send('Vessel destroyed')
         await self.set_sender(None)
+        await emit_observer_msg(self.u, f'{self.name()} just blew up for good!')
         self.u.remove(self)
         Resource(self.u, self.position, HP_LUT[self.stats[STATS.H]], destroyed_vessel=True)
 
@@ -189,6 +191,7 @@ class Vessel:
             self.u, self.position,
             self.u.t + max(0.1, data['delay']), self
         )
+        await emit_observer_msg(self.u, f'{self.name()} dropped one!')
 
     @playing_only
     @iem_sensitive
@@ -217,9 +220,11 @@ class Vessel:
                 await o.destroy()
                 break
             elif cls == 'Asteroid' or cls == 'Resource':
+                await emit_observer_msg(self.u, f'Useless waste of resources for {self.name()}!')
                 break
             elif cls == 'Vessel':
                 await o.damage(20)
+                await emit_observer_msg(self.u, f'Star Wars : {self.name()} shoot {o.name()} with a laser!')
                 break
 
     @playing_only
@@ -244,6 +249,7 @@ class Vessel:
             cls = o.__class__.__name__
             if cls == 'Vessel':
                 await o.register_iem(self.u.t + 5)
+                await emit_observer_msg(self.u, f'{self.name()} made {o.name()} blind!')
 
     @playing_only
     @iem_sensitive
@@ -291,6 +297,7 @@ class Vessel:
     @playing_only
     @log
     async def onMsg_autodestruction(self, data):
+        await emit_observer_msg(self.u, f'{self.name()} went kamikaze!')
         await emit_explosion(self.u, self)
         await self.destroy()
         objects_within_range = (o
@@ -304,8 +311,13 @@ class Vessel:
             cls = o.__class__.__name__
             if cls == 'Vessel':
                 await o.damage(20)
+                await emit_observer_msg(self.u, f'By exploding {self.name()} damaged {o.name()}!')
             if cls == 'Mine':
                 await o.destroy()
+                if o.emitter==self.name():
+                    await emit_observer_msg(self.u, f'Double boom ! {self.name()} went off with one of its own mines!')
+                else:
+                    await emit_observer_msg(self.u, f'Double boom ! {self.name()} went off with one of {o.emitter}\'s mines!')
 
     async def onMsg_ping(self, data):
         return {'type': 'pong', 'n': data.get('n', None)}
@@ -370,18 +382,21 @@ class Vessel:
             cls = o.__class__.__name__
             if cls == 'Mine':
                 if o.enabled_time < t:
+                    await emit_observer_msg(self.u, f'Whoopsie ! {self.name()} just jumped on a mine!')
                     mines.append(o)
                     imove = i
                     break
             elif cls == 'Asteroid':
                 explosions.append(o)
                 damages.append((self, 1_000_000))
+                await emit_observer_msg(self.u, f'That\' a wall bro ! {self.name()} kissed an asteroid!')
                 imove = i
                 break
             elif cls == 'Vessel' and o != self:
                 explosions.append(o)
                 explosions.append(self)
                 damages += [(self, 15), (o, 15)]
+                await emit_observer_msg(self.u, f'{self.name()} and {o.name()} love each other : they bumped!')
                 imove = i-1
                 break
 

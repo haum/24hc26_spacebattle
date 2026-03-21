@@ -2,6 +2,7 @@ import weakref
 
 from .vector import vector, hypervoxels_line
 from .radar import emit_explosion
+from .observer import emit_observer_msg
 
 
 class Torpedo:
@@ -44,6 +45,7 @@ class Torpedo:
                 if o != self.emitter() or self.activated:
                     self.u.remove(self)
                     await emit_explosion(self.u, o)
+                    await emit_observer_msg(self.u, f'{o.name()} hit by torpedo!')
                     await o.damage(20)
                     break
             elif cls == 'Asteroid':
@@ -51,6 +53,7 @@ class Torpedo:
                 self.u.remove(self)
                 break
             elif cls == 'Mine':
+                await emit_observer_msg(self.u, f"One of {o.emitter}'s mine got hit by torpedo!")
                 await o.destroy()
                 self.u.remove(self)
                 break

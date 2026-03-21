@@ -5,6 +5,10 @@ async def no_send(_):
     pass
 
 
+async def emit_observer_msg(u, msg):
+    for o in u.iter('observer'):
+        await o.send({'type': 'event', 'message': msg})
+
 class Observer:
     def __init__(self, universe):
         self.u = universe
