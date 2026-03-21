@@ -14,6 +14,8 @@ from .vessel import Vessel
 from .observer import Observer
 
 
+LOGS = './logs'
+
 def randomstr(k):
     return ''.join(random.choices(string.ascii_letters, k=k))
 
@@ -82,7 +84,6 @@ class Game:
                 self.keys = json.load(f)
         except FileNotFoundError:
             self.keys = {}
-
 
     async def destroy_vessels_of_team(self, team):
         for k in list(self.vessels.keys()):
