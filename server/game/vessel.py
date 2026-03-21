@@ -236,7 +236,7 @@ class Vessel:
                     vector.sub(o.position, self.position),
                     self.u.size
                 )
-                if vector.norm(p) < self.radar_radius:
+                if vector.manhattan(p) < self.radar_radius:
                     await self.send({
                         'type': 'active_scan',
                         'what': t,
@@ -273,7 +273,7 @@ class Vessel:
             vector.sub(data["position"], self.position),
             self.u.size
         )
-        if vector.norm(p) < self.radar_radius:
+        if vector.manhattan(p) < self.radar_radius:
             msg = data | { 'type': 'passive_scan'}
             msg['position'] = p
             if data['what'] == 'move':

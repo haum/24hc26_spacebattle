@@ -53,8 +53,11 @@ def vector_sub(v1, v2):
 def vector_mul(v, k):
     return [i*k for i in v]
 
-def vector_norm(v):
+def vector_manhattan(v):
     return sum([abs(i) for i in v])
+
+def vector_norm(v):
+    return sum([abs(i)**2 for i in v])**0.5
 
 def vector_round(v):
     return [round(i) for i in v]
@@ -71,5 +74,6 @@ vector = SimpleNamespace(
     sub=vector_sub,
     mul=vector_mul,
     norm=vector_norm,
+    manhattan=vector_manhattan,
     str=vector_str,
 )
