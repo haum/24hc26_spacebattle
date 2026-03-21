@@ -3,13 +3,15 @@ import weakref
 
 
 class Universe:
-    def __init__(self, name, size):
+    def __init__(self, name, size, logfile=False):
         self.t = 0
         self.name = name
         self.objects = set()
         self.groups = collections.defaultdict(set)
         self.refs = collections.defaultdict(weakref.WeakSet)
         self.size = [50] * size if isinstance(size, int) else size
+        self.log = []
+        self.logfile = logfile
 
     def add(self, o, groups):
         for g in groups:
@@ -41,6 +43,9 @@ class Universe:
     def clean(self):
         for o in list(self.objects):
             self.remove(o)
+        if self.logfile:
+            with open(self.logfile, 'w') as f:
+                f.writelines(self.log)
 
     def len(self, group):
         return len(self.refs[group]) if group in self.refs else 0

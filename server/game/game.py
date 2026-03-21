@@ -207,7 +207,10 @@ class Game:
 
     @admin_only
     async def onMsg_tournament(self, data):
-        lobby = Universe(randomstr(5), self.lobby.size)
+        lobby_name = randomstr(5)
+        lobby = Universe(
+            lobby_name, self.lobby.size,
+            logfile=f'{LOGS}/tournament_{lobby_name}_{time.strftime('%H%M%S', time.gmtime())}.log')
         lobby.required_teams = data['teams']
         self.tournament_lobbies.append(lobby)
         return {'type': 'tournament_created', 'name': lobby.name}

@@ -65,6 +65,15 @@ def iem_sensitive(f):
     return wrapper
 
 
+def log(f):
+    @functools.wraps(f)
+    async def wrapper(vessel, data):
+        if vessel.u.logfile:
+            vessel.u.log.append(f'{vessel.u.t} - {vessel.name()}: {f.__name__}({data})\n')
+        return await f(vessel, data)
+    return wrapper
+
+
 async def no_send(_):
     pass
 
@@ -86,6 +95,8 @@ class Vessel:
         self.send = no_send
         self.position = position
         self.u.add(self, ['vessel', 'collidable', 'update', 'radar'])
+        if self.u.logfile:
+            self.u.log.append(f'{self} created\n')
 
     async def destroy(self):
         await self.send('Vessel destroyed')
@@ -144,7 +155,9 @@ class Vessel:
 
     @playing_only
     @iem_sensitive
+    @log
     async def onMsg_move(self, data):
+
         d = vector.autodim(data['direction'], self.u.size, False)
         dlen = vector.norm(d)
         dmax = MOVE_LUT[self.stats[STATS.S]]
@@ -159,6 +172,7 @@ class Vessel:
     @playing_only
     @iem_sensitive
     @use_energy(ENERGY.torpedo)
+    @log
     async def onMsg_fire_torpedo(self, data):
         Torpedo(
             self.u, self.position,
@@ -169,6 +183,7 @@ class Vessel:
     @playing_only
     @iem_sensitive
     @use_energy(ENERGY.mine)
+    @log
     async def onMsg_drop_mine(self, data):
         Mine(
             self.u, self.position,
@@ -178,6 +193,7 @@ class Vessel:
     @playing_only
     @iem_sensitive
     @use_energy(ENERGY.laser)
+    @log
     async def onMsg_fire_laser(self, data):
         d = vector.mul(data['direction'], 1/vector.norm(data['direction']))
         positions = list(hypervoxels_line(
@@ -209,6 +225,7 @@ class Vessel:
     @playing_only
     @iem_sensitive
     @use_energy(ENERGY.iem)
+    @log
     async def onMsg_fire_iem(self, data):
         d = vector.mul(data['direction'], 1/vector.norm(data['direction']))
         positions = list(hypervoxels_line(
@@ -231,6 +248,7 @@ class Vessel:
     @playing_only
     @iem_sensitive
     @use_energy(ENERGY.radar)
+    @log
     async def onMsg_scan_radar(self, data):
         for t in ('asteroid', 'mine', 'vessel', 'torpedo', 'resource'):
             for o in self.u.iter(t, self):
@@ -247,6 +265,7 @@ class Vessel:
 
     @playing_only
     @iem_sensitive
+    @log
     async def onMsg_broadcast(self, data):
         anonymous = data.get('anonymous', False)
         cost = ENERGY.broadcast * (2 if anonymous else 1)
@@ -270,6 +289,7 @@ class Vessel:
                 await v.send(msg)
 
     @playing_only
+    @log
     async def onMsg_autodestruction(self, data):
         await emit_explosion(self.u, self)
         await self.destroy()
