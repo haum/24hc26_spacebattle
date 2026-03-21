@@ -174,6 +174,43 @@
       cursor: pointer; transition: background 0.2s; flex-shrink: 0;
     }
     #endgame-btn:hover { background: #1e4878; }
+
+    #events-panel {
+      position: absolute;
+      bottom: 100px; right: 16px;
+      width: 270px;
+      background: #0d1320aa;
+      border: 1px solid #2a4060;
+      border-radius: 8px;
+      font-size: 12px;
+      pointer-events: all;
+      backdrop-filter: blur(3px);
+    }
+    #events-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 10px;
+      cursor: pointer;
+      user-select: none;
+      color: #7fd4ff;
+      border-bottom: 1px solid #2a4060;
+    }
+    #events-panel.collapsed #events-header { border-bottom: none; }
+    #events-toggle { background: none; border: none; color: #7fd4ff; cursor: pointer; font-size: 10px; padding: 0; }
+    #events-list {
+      max-height: 180px;
+      overflow-y: auto;
+      padding: 5px 8px;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 3px;
+      scrollbar-width: thin;
+      scrollbar-color: #2a4060 transparent;
+    }
+    #events-panel.collapsed #events-list { display: none; }
+    .ev { color: #c8d8f0; line-height: 1.5; word-break: break-word; }
+    .ev-time { color: #445566; margin-right: 5px; }
   </style>
 </head>
 <body>
@@ -212,6 +249,14 @@
   <div id="controls">
     <button id="btn-trails">⟿ Tracés</button>
     <button id="btn-reset">⟳ Réinitialiser vue</button>
+  </div>
+
+  <div id="events-panel">
+    <div id="events-header">
+      <span>Évènements</span>
+      <button id="events-toggle">▲</button>
+    </div>
+    <div id="events-list"></div>
   </div>
 </div>
 
@@ -1637,6 +1682,8 @@ function connect(universe, key) {
       el('info-vessels').textContent  = (msg.vessels ?? []).length;
       updateModeUI();
       recordTrails(msg.vessels);
+    } else if (msg.type === 'event') {
+      addEvent(msg);
     } else {
       console.warn('Unknown message:', msg);
     }
@@ -1644,6 +1691,31 @@ function connect(universe, key) {
 
   ws.onclose = e => { setConnected(false); ws = null; showEndGame(e.reason || ''); };
   ws.onerror = () => setConnected(false);
+}
+
+// ─── Events panel ───────────────────────────────────────────
+const eventsPanel  = el('events-panel');
+const eventsList   = el('events-list');
+const eventsToggle = el('events-toggle');
+
+el('events-header').addEventListener('click', () => {
+  const collapsed = eventsPanel.classList.toggle('collapsed');
+  eventsToggle.textContent = collapsed ? '▼' : '▲';
+});
+
+function addEvent(msg) {
+  const now = new Date();
+  const ts  = now.toTimeString().slice(0, 8);
+  const div = document.createElement('div');
+  div.className = 'ev';
+  div.innerHTML = `<span class="ev-time">${ts}</span>${escapeHtml(msg.message ?? JSON.stringify(msg))}`;
+  eventsList.prepend(div);
+  // keep at most 200 entries
+  while (eventsList.children.length > 200) eventsList.lastElementChild.remove();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // ─── Dialog ─────────────────────────────────────────────────
