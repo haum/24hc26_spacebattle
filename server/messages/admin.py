@@ -17,6 +17,20 @@ MSG_RQ_WORLD_REPORT = {
     "additionalProperties": False
 }
 
+MSG_TOURNAMENT = {
+    "properties": {
+        "type": {"const": "tournament"},
+        "key": {"type": "string"},
+        "teams": {
+            "type": "array",
+            "minItems": 2,
+            "items": {"type": ["string", "null"]}
+        }
+    },
+    "required": ["type", "teams"],
+    "additionalProperties": False
+}
+
 MSG_CONFIG_UNIVERSE = {
     "properties": {
         "type": {
