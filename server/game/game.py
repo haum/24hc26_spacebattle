@@ -97,8 +97,18 @@ class Game:
         m = list(u for u in self.universes if u.name == name)
         if m:
             return m[0]
+        m = list(u for u in self.tournament_lobbies if u.name == name)
+        if m:
+            return m[0]
         if self.lobby.name == name or name == '':
             return self.lobby
+        if name[0] == 'T':
+            try:
+                return list(self.tournament_lobbies)[int(name[1:])]
+            except IndexError:
+                return None
+            except ValueError:
+                return None
         try:
             return list(self.universes)[int(name)]
         except IndexError:
