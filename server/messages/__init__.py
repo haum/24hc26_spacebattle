@@ -4,6 +4,7 @@ import itertools
 from .admin import (
     MSG_RQ_WORLD_REPORT,
     MSG_CONFIG_UNIVERSE,
+    MSG_TOURNAMENT,
 )
 from .game import (
     MSG_START,
@@ -42,6 +43,7 @@ validators = dict(map(
         ('ping', MSG_PING),
         ('rq_world_report', MSG_RQ_WORLD_REPORT),
         ('config_universe', MSG_CONFIG_UNIVERSE),
+        ('tournament', MSG_TOURNAMENT),
     )
 ))
 

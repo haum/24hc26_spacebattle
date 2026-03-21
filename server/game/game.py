@@ -47,12 +47,35 @@ def start_lobby_helper(game, lobby):
         game.new_universe(game.lobby.size)
 
 
+def can_join_tournament(lobby, team):
+    required = lobby.required_teams
+    teams_present = teams_in_universe(lobby)
+    named = {t for t in required if t is not None}
+    if team in teams_present or team in named:
+        return True
+    if None in required:
+        wildcard_count = required.count(None)
+        wildcard_taken = len(teams_present - named)
+        return team not in named and wildcard_taken < wildcard_count
+    return False
+
+
+def tournament_ready(lobby):
+    required = lobby.required_teams
+    teams_present = teams_in_universe(lobby)
+    named = {t for t in required if t is not None}
+    if not named.issubset(teams_present):
+        return False
+    return len(teams_present - named) >= required.count(None)
+
+
 class Game:
     def __init__(self):
         self.lobby = Universe(randomstr(5), 2)
         self.universes = set()
         self.vessels = weakref.WeakValueDictionary()
         self.tasks = set()
+        self.tournament_lobbies = []
 
         try:
             with open("keys.json", "r") as f:
@@ -90,12 +113,13 @@ class Game:
             ))
         self.lobby = Universe(randomstr(5), sz)
 
-    def add_in_lobby(self, team, vessels_stats):
+    def add_in_lobby(self, team, vessels_stats, universe=None):
+        u = universe or self.lobby
         ret = []
         for i, stats in enumerate(vessels_stats):
-            p = random_position(self.lobby)
+            p = random_position(u)
             v = Vessel(
-                weakref.proxy(self.lobby),
+                weakref.proxy(u),
                 [team, i+1, randomstr(5)],
                 stats,
                 p
@@ -146,10 +170,20 @@ class Game:
             return 'Invalid key'
         msg = {'type': 'new_vessels'}
         await self.destroy_vessels_of_team(data['team'])
-        msg['vessels'] = self.add_in_lobby(data['team'], data['vessels'])
-        if len(teams_in_universe(self.lobby)) > 1:
-            loop = asyncio.get_event_loop()
-            loop.call_later(5, start_lobby_helper, self, self.lobby)
+
+        tlobby = next((l for l in self.tournament_lobbies
+                       if can_join_tournament(l, data['team'])), None)
+        if tlobby:
+            msg['vessels'] = self.add_in_lobby(data['team'], data['vessels'], tlobby)
+            if tournament_ready(tlobby):
+                self.tournament_lobbies.remove(tlobby)
+                self.universes.add(tlobby)
+                self.tasks.add(asyncio.create_task(self.universe_update_task(tlobby)))
+        else:
+            msg['vessels'] = self.add_in_lobby(data['team'], data['vessels'])
+            if len(teams_in_universe(self.lobby)) > 1:
+                loop = asyncio.get_event_loop()
+                loop.call_later(5, start_lobby_helper, self, self.lobby)
         return msg
 
     async def onMsg_connect(self, data):
@@ -170,6 +204,13 @@ class Game:
     @admin_only
     async def onMsg_config_universe(self, data):
         self.new_universe(data['size'])
+
+    @admin_only
+    async def onMsg_tournament(self, data):
+        lobby = Universe(randomstr(5), self.lobby.size)
+        lobby.required_teams = data['teams']
+        self.tournament_lobbies.append(lobby)
+        return {'type': 'tournament_created', 'name': lobby.name}
 
     async def onMsg_ping(self, data):
         return {'type': 'pong', 'n': data.get('n', None)}
