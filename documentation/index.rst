@@ -288,7 +288,7 @@ Si deux vaisseaux entrent en collision, ils infligent chacun **15 dégâts** à 
 
 .. note::
 
-   La norme (Manhattan) du vecteur ne doit pas dépasser votre capacité de
+   La norme euclidienne du vecteur ne doit pas dépasser votre capacité de
    déplacement (déterminée par la stat **S**). Si le déplacement est trop
    grand, le serveur envoie un message de type ``move_aborded`` et un petit
    dégât est infligé au vaisseau.
@@ -370,6 +370,11 @@ Pour chaque objet détecté dans votre rayon radar, vous recevez :
 Les positions sont **relatives** à votre vaisseau.
 Si un même objet est visible plusieurs fois, seule la distance la plus courte
 est indiquée.
+
+.. note::
+
+   Pour des raisons de performance, le radar utilise la norme Manhattan pour le rayon de
+   détection, tandis que les déplacements utilisent la norme euclidienne.
 
 autodestruction
 ---------------
