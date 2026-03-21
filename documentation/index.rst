@@ -482,7 +482,8 @@ broadcast
 Votre vaisseau a reçu un message envoyé par un autre vaisseau à portée.
 
 .. code-block::
-   <   { "type": "broadcast", "message": "...", "position": [dx, dy], "emitter": "TeamA:1" }
+
+   < { "type": "broadcast", "message": "...", "position": [dx, dy], "emitter": "TeamA:1" }
 
 Dans le cas où le message est envoyé anonymement, le champ emitter ne sera pas présent.
 
