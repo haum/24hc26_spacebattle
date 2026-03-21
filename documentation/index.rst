@@ -388,6 +388,16 @@ Déclenche l'autodestruction immédiate du vaisseau.
 Inflige **20 dégâts** à tous les vaisseaux et détruit les mines dans un rayon
 de 5. La connexion WebSocket est fermée après.
 
+broadcast
+---------
+
+Déclenche l'envoi d'un message de 128 caractères maximum broadcasté à tous les
+vaisseaux dans un rayon équivalent au quart de la taille de l'univers. La
+probabilité de recevoir le message diminue avec la distance. Tous les messages
+indiquent la position relative entre le récepteur et l'émetteur. L'envoi d'un
+message coûte 40 d'énergie et contient par défaut l'identifiant de l'émetteur.
+Il est possible d'envoyer des messages de façon anonyme au double du prix.
+
 
 Événements reçus
 ================
