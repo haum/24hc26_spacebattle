@@ -88,14 +88,14 @@ def test_vector_mul():
     assert vector.mul([1, 2, 3, 4], -3) == [-3, -6, -9, -12]
 
 
-def test_vector_norm():
-    assert vector.norm([1, 2]) == 3
-    assert vector.norm([1, 2, 3]) == 6
-    assert vector.norm([1, 2, 3, 4]) == 10
+def test_vector_manhattan():
+    assert vector.manhattan([1, 2]) == 3
+    assert vector.manhattan([1, 2, 3]) == 6
+    assert vector.manhattan([1, 2, 3, 4]) == 10
 
-    assert vector.norm([-1, -2]) == 3
-    assert vector.norm([-1, -2, -3]) == 6
-    assert vector.norm([-1, -2, -3, -4]) == 10
+    assert vector.manhattan([-1, -2]) == 3
+    assert vector.manhattan([-1, -2, -3]) == 6
+    assert vector.manhattan([-1, -2, -3, -4]) == 10
 
 
 def test_vector_str():
