@@ -1,5 +1,6 @@
 import functools
 import itertools
+import random
 
 from .vector import vector, hypervoxels_line
 from .torpedo import Torpedo
@@ -28,6 +29,7 @@ class ENERGY:
     laser = 50
     move = 5
     radar = 5
+    broadcast = 40
     regen = 4
     max = 100
 
@@ -242,6 +244,30 @@ class Vessel:
                         'what': t,
                         'position': p,
                     })
+
+    @playing_only
+    @iem_sensitive
+    async def onMsg_broadcast(self, data):
+        anonymous = data.get('anonymous', False)
+        cost = ENERGY.broadcast * (2 if anonymous else 1)
+        if not await self.spend_energy(cost):
+            return
+        for v in self.u.iter('vessel', self):
+            rel = vector.mod_relative(
+                vector.sub(v.position, self.position),
+                self.u.size
+            )
+            dist = vector.norm(rel)
+            p = max(0.0, 1 - dist / (max(self.u.size)/4))
+            if random.random() < p:
+                msg = {
+                    'type': 'broadcast',
+                    'message': data['message'],
+                    'position': rel,
+                }
+                if not anonymous:
+                    msg['emitter'] = self.name()
+                await v.send(msg)
 
     @playing_only
     async def onMsg_autodestruction(self, data):

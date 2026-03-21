@@ -102,3 +102,13 @@ MSG_AUTODESTRUCTION = {
     "required": ["type"],
     "additionalProperties": False
 }
+
+MSG_BROADCAST = {
+    "properties": {
+        "type": {"const": "broadcast"},
+        "message": {"type": "string", "maxLength": 128},
+        "anonymous": {"type": "boolean"},
+    },
+    "required": ["type", "message"],
+    "additionalProperties": False
+}

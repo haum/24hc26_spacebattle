@@ -13,6 +13,7 @@ from .game import (
 from .vessels import (
     MSG_MOVE,
     MSG_FIRE_TORPEDO,
+    MSG_BROADCAST,
     MSG_DROP_MINE,
     MSG_FIRE_LASER,
     MSG_FIRE_IEM,
@@ -40,6 +41,7 @@ validators = dict(map(
         ('fire_iem', MSG_FIRE_IEM),
         ('scan_radar', MSG_SCAN_RADAR),
         ('autodestruction', MSG_AUTODESTRUCTION),
+        ('broadcast', MSG_BROADCAST),
         ('ping', MSG_PING),
         ('rq_world_report', MSG_RQ_WORLD_REPORT),
         ('config_universe', MSG_CONFIG_UNIVERSE),
