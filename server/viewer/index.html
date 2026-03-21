@@ -1651,12 +1651,15 @@ const btnConn = el('btn-connect');
 btnConn.addEventListener('click', () => {
   const universe = el('inp-universe').value.trim();
   const key      = el('inp-key').value.trim();
+  if (key) localStorage.setItem('admin-key', key);
   el('dialog-error').textContent = '';
   el('dialog-overlay').style.display = 'none';
   connect(universe, key);
 });
 el('inp-key').addEventListener('keydown',      e => { if (e.key==='Enter') btnConn.click(); });
 el('inp-universe').addEventListener('keydown', e => { if (e.key==='Enter') btnConn.click(); });
+const savedKey = localStorage.getItem('admin-key');
+if (savedKey) el('inp-key').value = savedKey;
 el('inp-universe').focus();
 </script>
 </body>
