@@ -398,6 +398,11 @@ indiquent la position relative entre le récepteur et l'émetteur. L'envoi d'un
 message coûte 40 d'énergie et contient par défaut l'identifiant de l'émetteur.
 Il est possible d'envoyer des messages de façon anonyme au double du prix.
 
+.. code-block::
+
+   >   { "type": "broadcast", "message": "...", "anonymous": true }
+
+Le champ anonymous est optionnel (défaut false).
 
 Événements reçus
 ================
@@ -470,6 +475,16 @@ La bataille a commencé.
 .. code-block::
 
    < {"type": "start_battle"}
+
+broadcast
+---------
+
+Votre vaisseau a reçu un message envoyé par un autre vaisseau à portée.
+
+.. code-block::
+   <   { "type": "broadcast", "message": "...", "position": [dx, dy], "emitter": "TeamA:1" }
+
+Dans le cas où le message est envoyé anonymement, le champ emitter ne sera pas présent.
 
 won / end
 ---------
