@@ -198,6 +198,8 @@
     }
     #events-panel.collapsed #events-header { border-bottom: none; }
     #events-toggle { background: none; border: none; color: #7fd4ff; cursor: pointer; font-size: 10px; padding: 0; }
+    #events-clear  { background: none; border: none; color: #556677; cursor: pointer; font-size: 10px; padding: 0; margin-right: 6px; }
+    #events-clear:hover { color: #ff7070; }
     #events-list {
       max-height: 180px;
       overflow-y: auto;
@@ -254,7 +256,10 @@
   <div id="events-panel">
     <div id="events-header">
       <span>Évènements</span>
-      <button id="events-toggle">▲</button>
+      <span style="margin-left:auto">
+        <button id="events-clear" title="Vider">✕</button>
+        <button id="events-toggle">▲</button>
+      </span>
     </div>
     <div id="events-list"></div>
   </div>
@@ -1694,6 +1699,7 @@ function connect(universe, key) {
   if (ws) { ws.onclose = null; ws.close(); }
   resetCamera();
   trails.clear();
+  eventsList.replaceChildren();
 
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}/ws`);
@@ -1732,6 +1738,11 @@ const eventsToggle = el('events-toggle');
 el('events-header').addEventListener('click', () => {
   const collapsed = eventsPanel.classList.toggle('collapsed');
   eventsToggle.textContent = collapsed ? '▼' : '▲';
+});
+
+el('events-clear').addEventListener('click', e => {
+  e.stopPropagation(); // ne pas replier/déplier le panneau
+  eventsList.replaceChildren();
 });
 
 function addEvent(msg) {
