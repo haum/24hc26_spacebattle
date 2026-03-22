@@ -2,14 +2,15 @@ import asyncio
 from .vector import vector
 
 class Notifyer:
-    def __init__(self, universe):
+    def __init__(self, universe, initial_timestamp_mn=2, interval_mn=5):
         self.u = universe
-        self.n = 2
+        self.timestamp = initial_timestamp_mn*60
+        self.interval = interval_mn*60
         self.u.add(self, ['update'])
 
     async def onUpdate(self, _dt, t):
-        if t > self.n * 5*60:
-            self.n += 1
+        if t > self.timestamp:
+            self.timestamp += self.interval
 
             for va in self.u.iter('vessel'):
                 for vb in self.u.iter('vessel', va):

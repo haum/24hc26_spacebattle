@@ -149,7 +149,7 @@ class Game:
             for _ in range(min(int(math.prod(u.size)/1000), 100)):
                 p = random_position(u)
                 Resource(u, p, 500)
-            Notifyer(u)
+            Notifyer(u, self.notifyer_start, self.notifyer_interval)
             for v in u.iter('vessel'):
                 await v.start()
             t0 = time.time()
@@ -217,6 +217,8 @@ class Game:
     @admin_only
     async def onMsg_config_universe(self, data):
         self.new_universe(data['size'])
+        self.notifyer_start = data['notify_start']
+        self.notifyer_interval = data['notify_interval']
 
     @admin_only
     async def onMsg_tournament(self, data):

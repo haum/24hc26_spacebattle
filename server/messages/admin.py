@@ -39,6 +39,14 @@ MSG_CONFIG_UNIVERSE = {
         "key": {
             "type": "string",
         },
+        "notify_start": {
+            "type": "number",
+            "minimum": 0,
+        },
+        "notify_interval": {
+            "type": "number",
+            "minimum": 0,
+        },
         "size": {
             "type": "array",
             "minItems": 2,
