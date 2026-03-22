@@ -1508,44 +1508,50 @@ function screenToGrid(clientX, clientY) {
   const W = canvas.width, H = canvas.height;
 
   if (is3D()) {
-    // Ray casting: find the integer cell closest to the ray
-    const { mvp, cell } = buildMVP(W, H);
+    const { cell, eye, view } = buildMVP(W, H);
 
-    // Invert MVP to get ray in world space
-    // NDC of mouse
+    // NDC mouse coordinates
     const nx = ((clientX - rect.left)*dpr / W)*2 - 1;
     const ny = -(((clientY - rect.top)*dpr / H)*2 - 1);
 
-    // We do a simple approach: unproject two points (near/far) and find
-    // the grid cell closest to the ray that contains an object.
-    // For the tooltip we just show the nearest object to the ray centre
-    // projected to grid coords — good enough for spectating.
-    // Fall back: project each object's world pos to screen, pick nearest to cursor.
-    const cx_s = (clientX - rect.left)*dpr;
-    const cy_s = (clientY - rect.top)*dpr;
-    let best = null, bestDist = Infinity;
+    // Build world-space ray from camera through the mouse pixel.
+    // View-space direction: (nx*aspect*tan(fovY/2), ny*tan(fovY/2), -1)
+    const aspect = W / H;
+    const th = Math.tan(Math.PI / 6); // tan(PI/3 / 2)
+    const vx = nx * aspect * th;
+    const vy = ny * th;
+    // Transform to world space via transpose of view rotation (view rows → world axes).
+    // Column-major layout: row i = [view[i], view[4+i], view[8+i]]
+    const rx = view[0], ry = view[4], rz = view[8];   // camera right  in world
+    const ux = view[1], uy = view[5], uz = view[9];   // camera up     in world
+    const bx = view[2], by = view[6], bz = view[10];  // camera back   in world (-forward)
+    // world ray dir = vx*right + vy*up + (-1)*back
+    let rdx = vx*rx + vy*ux - bx;
+    let rdy = vx*ry + vy*uy - by;
+    let rdz = vx*rz + vy*uz - bz;
+    const rdLen = Math.hypot(rdx, rdy, rdz);
+    rdx /= rdLen; rdy /= rdLen; rdz /= rdLen;
 
-    const projectToScreen = (gx, gy, gz) => {
-      const wx = (gx+0.5)*cell - gridSz[0]*cell*0.5 + cam3D.panX;
-      const wy = (gy+0.5)*cell - gridSz[1]*cell*0.5 + cam3D.panY;
-      const wz = (gz+0.5)*cell - gridSz[2]*cell*0.5 + cam3D.panZ;
-      // multiply by mvp manually
-      const m = mvp;
-      const cx_ = m[0]*wx+m[4]*wy+m[8]*wz+m[12];
-      const cy_ = m[1]*wx+m[5]*wy+m[9]*wz+m[13];
-      const cw  = m[3]*wx+m[7]*wy+m[11]*wz+m[15];
-      if (cw <= 0) return null;
-      return [(cx_/cw*0.5+0.5)*W, (-cy_/cw*0.5+0.5)*H];
-    };
+    // Pick the object whose centre is closest to the ray and nearest to the camera.
+    const gsz2 = gridSz[2] ?? 1;
+    const threshold = cell * 0.7; // hit radius in world units
+    let best = null, bestT = Infinity;
 
     const check = (p, kind, name='') => {
-      const gz = p[2] ?? 0;
-      const s = projectToScreen(p[0], p[1], gz);
-      if (!s) return;
-      const d = Math.hypot(s[0]-cx_s, s[1]-cy_s);
-      if (d < bestDist && d < 30*dpr) {
-        bestDist = d;
-        best = { gx: p[0], gy: p[1], gz, kind, name };
+      const pgz = p[2] ?? 0;
+      const pcx = (p[0]+0.5)*cell - gridSz[0]*cell*0.5;
+      const pcy = (p[1]+0.5)*cell - gridSz[1]*cell*0.5;
+      const pcz = (pgz+0.5)*cell  - gsz2*cell*0.5;
+      // Vector from ray origin (eye) to object centre
+      const ocx = pcx - eye[0], ocy = pcy - eye[1], ocz = pcz - eye[2];
+      // Signed distance along ray to closest point
+      const t = ocx*rdx + ocy*rdy + ocz*rdz;
+      if (t < 0) return; // behind camera
+      // Perpendicular distance from object centre to ray
+      const cpx = ocx - t*rdx, cpy = ocy - t*rdy, cpz = ocz - t*rdz;
+      if (Math.hypot(cpx, cpy, cpz) < threshold && t < bestT) {
+        bestT = t;
+        best = { gx: p[0], gy: p[1], gz: pgz, kind, name };
       }
     };
     if (objs.asteroids) for (const p of objs.asteroids) check(p, 'asteroid');
