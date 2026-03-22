@@ -1034,14 +1034,37 @@ function recordTrails(vessels) {
   for (const name of trails.keys()) if (!active.has(name)) trails.delete(name);
 }
 
+// ── Split trail into continuous segments (no toric wrap within a segment) ──
+// Returns [{pts, offset}] where offset is the index of pts[0] in the full array.
+function trailSegments(positions, gridSz) {
+  const n = positions.length;
+  const result = [];
+  let segStart = 0;
+  for (let i = 1; i < n; i++) {
+    const prev = positions[i-1];
+    const curr = positions[i];
+    let wrap = false;
+    for (let a = 0; a < gridSz.length; a++) {
+      if (Math.abs((curr[a] ?? 0) - (prev[a] ?? 0)) > gridSz[a] * 0.5) { wrap = true; break; }
+    }
+    if (wrap) {
+      if (i - segStart >= 2) result.push({ pts: positions.slice(segStart, i), offset: segStart });
+      segStart = i;
+    }
+  }
+  if (n - segStart >= 2) result.push({ pts: positions.slice(segStart), offset: segStart });
+  return result;
+}
+
 // ── Upload trail geometry (shared) ───────────────────────────
-function uploadTrail(pts, stride) {
+// ageOffset/ageTotal preserve correct fade across split segments.
+function uploadTrail(pts, stride, ageOffset, ageTotal) {
   const n = pts.length;
   const posData = new Float32Array(n * stride);
   const ageData = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < stride; j++) posData[i*stride+j] = pts[i][j] ?? 0;
-    ageData[i] = i / (n - 1);
+    ageData[i] = (ageOffset + i) / Math.max(ageTotal - 1, 1);
   }
   gl.bindBuffer(gl.ARRAY_BUFFER, trailPosBuf);
   gl.bufferData(gl.ARRAY_BUFFER, posData, gl.DYNAMIC_DRAW);
@@ -1061,9 +1084,11 @@ function drawTrails3D(mvp, gridSz, cell) {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   for (const [, trail] of trails) {
     if (trail.positions.length < 2) continue;
-    const n = uploadTrail(trail.positions, 3);
+    const total = trail.positions.length;
     gl.uniform3fv(trail3DUColor, trail.color);
-    gl.drawArrays(gl.LINE_STRIP, 0, n);
+    for (const { pts, offset } of trailSegments(trail.positions, gridSz)) {
+      gl.drawArrays(gl.LINE_STRIP, 0, uploadTrail(pts, 3, offset, total));
+    }
   }
   gl.disable(gl.BLEND);
   gl.bindVertexArray(null);
@@ -1082,9 +1107,11 @@ function drawTrails2D(gridSz, cell, W, H) {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   for (const [, trail] of trails) {
     if (trail.positions.length < 2) continue;
-    const n = uploadTrail(trail.positions, 2);
+    const total = trail.positions.length;
     gl.uniform3fv(trail2DUColor, trail.color);
-    gl.drawArrays(gl.LINE_STRIP, 0, n);
+    for (const { pts, offset } of trailSegments(trail.positions, gridSz.slice(0, 2))) {
+      gl.drawArrays(gl.LINE_STRIP, 0, uploadTrail(pts, 2, offset, total));
+    }
   }
   gl.disable(gl.BLEND);
   gl.bindVertexArray(null);
