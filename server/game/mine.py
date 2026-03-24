@@ -1,12 +1,10 @@
-import weakref
-
 from .vector import vector, hypervoxels_line
 from .radar import emit_explosion
 
 class Mine:
     def __init__(self, universe, position, enabled_time, emitter=None):
         self.u = universe
-        self.emitter = weakref.ref(emitter) if emitter else lambda: None
+        self.emitter = emitter.name() if emitter else None
         self.position = position
         self.enabled_time = enabled_time
         self.u.add(self, ['mine', 'collidable'])

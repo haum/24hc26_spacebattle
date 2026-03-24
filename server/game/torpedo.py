@@ -53,7 +53,8 @@ class Torpedo:
                 self.u.remove(self)
                 break
             elif cls == 'Mine':
-                await emit_observer_msg(self.u, f"One of {o.emitter}'s mine got hit by torpedo!")
+                mine_owner = o.emitter or 'someone'
+                await emit_observer_msg(self.u, f"One of {mine_owner}'s mine got hit by torpedo!")
                 await o.destroy()
                 self.u.remove(self)
                 break

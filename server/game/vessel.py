@@ -314,10 +314,12 @@ class Vessel:
                 await emit_observer_msg(self.u, f'By exploding {self.name()} damaged {o.name()}!')
             if cls == 'Mine':
                 await o.destroy()
-                if o.emitter==self.name():
+                if o.emitter == self.name():
                     await emit_observer_msg(self.u, f'Double boom ! {self.name()} went off with one of its own mines!')
-                else:
+                elif o.emitter:
                     await emit_observer_msg(self.u, f'Double boom ! {self.name()} went off with one of {o.emitter}\'s mines!')
+                else:
+                    await emit_observer_msg(self.u, f'Double boom ! {self.name()} went off with an abandoned mine!')
 
     async def onMsg_ping(self, data):
         return {'type': 'pong', 'n': data.get('n', None)}

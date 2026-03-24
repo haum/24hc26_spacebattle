@@ -44,7 +44,7 @@ class Observer:
                     ],
                     'mines': [
                         (
-                            m.emitter().name() if m.emitter() else '',
+                            m.emitter or '',
                             m.position
                         )
                         for m in self.u.iter('mine')
